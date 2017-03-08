@@ -10,8 +10,16 @@
 // QT
 #include <QApplication>
 #include <QMainWindow>
+#include <QStackedWidget>
 #include <QMenuBar>
 #include <QFileDialog>
+#include <QImage>
+#include <QGridLayout>
+#include <QFormLayout>
+#include <QGroupBox>
+#include <QPushButton>
+#include <QLabel>
+#include <QProgressBar>
 //#include <QString>
 //#include <QStringList>
 
@@ -25,7 +33,12 @@
 
 using namespace std;
 
+#define KN_WIDGET_EMPTY 0
+#define KN_WIDGET_LOAD	1
+#define KN_WIDGET_MAIN	2
+
 // PROJECT
 #include "mainwindow.h"
+#include "dataset.h"
 
 #endif

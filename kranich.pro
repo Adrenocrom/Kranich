@@ -7,17 +7,16 @@ QMAKE_CXXFLAGS += -fopenmp
 
 SOURCES +=	main.cpp \
 			kranich.cpp \
-			mainwindow.cpp
+			mainwindow.cpp \
+			dataset.cpp
 
 HEADERS += 	kranich.h \
-			mainwindow.h
+			mainwindow.h \
+			dataset.h
 				
-LIBS += -lboost_system \
-		-lboost_filesystem \
-		-lopencv_core \
+LIBS += -lopencv_core \
 		-lopencv_highgui \
 		-lopencv_imgproc \
 		-fopenmp 
 		
-INCLUDEPATH += 	/usr/include/opencv2/ \
-				/usr/include/boost/
+INCLUDEPATH += 	/usr/include/opencv2/
