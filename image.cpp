@@ -1163,6 +1163,19 @@ SSegmentInfo CImage::seedRegionGrowing(int x, int y, int t, int c)
 
 		if(qualitySqare(seedColor, pos[x][y]) < t) {
 			pos[x][y] = markedColor;
+			
+			if(ssinfo.max.x == -1) {
+				ssinfo.min.x = x;
+				ssinfo.min.y = y;
+				ssinfo.max.x = x;
+				ssinfo.max.y = y;
+			} else {
+				if(x > ssinfo.max.x) ssinfo.max.x = x;
+				if(y > ssinfo.max.y) ssinfo.max.y = y;
+				if(x < ssinfo.min.x) ssinfo.min.x = x;
+				if(y < ssinfo.min.y) ssinfo.min.x = y;
+			}
+
 			iNumPixel++;
 
 			if(pixelConditions(x, y+1, markedColor))

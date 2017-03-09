@@ -45,6 +45,5 @@ using namespace std;
 // PROJECT
 #include "image.h"
 #include "mainwindow.h"
-//#include "dataset.h"
 
 #endif

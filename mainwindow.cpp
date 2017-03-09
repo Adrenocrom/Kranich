@@ -15,7 +15,9 @@ MainWindow::MainWindow() {
 	createMenu();
 	createWidgets();
 
-	adjustSize();
+	setMinimumSize(640, 480);
+	setMaximumSize(640, 480);
+
 }
 
 MainWindow::~MainWindow() {
@@ -105,6 +107,7 @@ void MainWindow::createWidgetMain() {
 	gridLayout->addWidget(m_label_frame_first, 1, 0);
 	gridLayout->addWidget(m_label_frame_second, 1, 1);
 	gridLayout->addWidget(m_slider_pairs, 2, 0, 1, 2);
+	//gridLayout->setSizeConstraint(QLayout::SetFixedSize);
 	m_widget_main->setLayout(gridLayout);
 	m_widget_stacked->addWidget(m_widget_main);
 }
