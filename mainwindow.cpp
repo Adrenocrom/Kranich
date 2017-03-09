@@ -128,8 +128,13 @@ void MainWindow::importImages() {
 			m_images.push_back(img);
 		}
 
+		CImage test(&m_images[0]);
+		//test.globalThreshold(120);
+		test.invert();
+		test.regionGrowing(120, 4000, 0);
+
 		m_label_frame_first->setPixmap(QPixmap::fromImage(m_images[0]).scaled(256, 256));
-		m_label_frame_second->setPixmap(QPixmap::fromImage(m_images[1]).scaled(256, 256));
+		m_label_frame_second->setPixmap(QPixmap::fromImage(test.get()).scaled(256, 256));
 
 		m_slider_pairs->setMaximum(filenames.count()-1);
 

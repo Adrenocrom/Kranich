@@ -8,11 +8,11 @@ QMAKE_CXXFLAGS += -fopenmp
 SOURCES +=	main.cpp \
 			kranich.cpp \
 			mainwindow.cpp \
-			dataset.cpp
+			image.cpp
 
 HEADERS += 	kranich.h \
 			mainwindow.h \
-			dataset.h
+			image.h
 				
 LIBS += -lopencv_core \
 		-lopencv_highgui \

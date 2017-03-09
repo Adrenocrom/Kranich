@@ -43,7 +43,8 @@ using namespace std;
 #define KN_WIDGET_MAIN	2
 
 // PROJECT
+#include "image.h"
 #include "mainwindow.h"
-#include "dataset.h"
+//#include "dataset.h"
 
 #endif
