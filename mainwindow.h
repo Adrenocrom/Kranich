@@ -7,7 +7,7 @@
 
 #include <opencv.hpp>
 
-struct Dataset;
+#include "image.h"
 
 class QLabel;
 class QSlider;
@@ -23,7 +23,7 @@ public:
 	~MainWindow();
 
 	std::vector<QImage> m_images;
-	std::list<int>		m_indices;
+	std::vector<CImage*> m_cimages;
 
 private slots:
 	void importImages();

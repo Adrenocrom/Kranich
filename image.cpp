@@ -5,7 +5,7 @@ CImage::CImage(QImage* img)
 	width = img->width();
 	height = img->height();
 
-	pos = 0;
+	pos = nullptr;
 	pos = new int*[width];
 	for(int x = 0; x < width; ++x) {
 		pos[x] = new int[height];
@@ -60,7 +60,7 @@ CImage::~CImage()
 		}
 
 		delete[] pos;
-		pos = 0;
+		pos = nullptr;
 	}
 }
 

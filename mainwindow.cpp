@@ -115,6 +115,7 @@ void MainWindow::createWidgetMain() {
 void MainWindow::importImages() {
 	QStringList filenames = QFileDialog::getOpenFileNames(this,tr("BMP files"),QDir::currentPath(),tr("Bitmap files (*.bmp);;All files (*.*)") );
 	m_images.clear();
+	m_cimages.clear();
 
 	if( !filenames.isEmpty() ) {
 		m_widget_stacked->setCurrentIndex(KN_WIDGET_LOAD);
@@ -124,20 +125,25 @@ void MainWindow::importImages() {
 
 		filenames.sort();
     	
-		for (int i = 0; i < filenames.count(); i++) {
+		for(int i = 0; i < filenames.count(); i++) {
 			m_progress_load->setValue(i);
-    	    cout<<filenames.at(i).toStdString()<<endl;
+    	    //cout<<filenames.at(i).toStdString()<<endl;
 			QImage img(filenames.at(i));
 			m_images.push_back(img);
+			m_cimages.push_back(new CImage(&img));
 		}
 
-		CImage test(&m_images[0]);
-		//test.globalThreshold(120);
-		test.invert();
-		test.regionGrowing(120, 4000, 0);
+		for(int i = 0; i < filenames.count(); i++) {
+			m_cimages[i]->invert();
+			m_cimages[i]->regionGrowing(120, 4000, 0);
+		}
+
+	//	CImage test(&m_images[0]);
+	//	test.invert();
+	//	test.regionGrowing(120, 4000, 0);
 
 		m_label_frame_first->setPixmap(QPixmap::fromImage(m_images[0]).scaled(256, 256));
-		m_label_frame_second->setPixmap(QPixmap::fromImage(test.get()).scaled(256, 256));
+		m_label_frame_second->setPixmap(QPixmap::fromImage(m_cimages[0]->get()).scaled(256, 256));
 
 		m_slider_pairs->setMaximum(filenames.count()-1);
 
@@ -154,7 +160,8 @@ void MainWindow::exportDataset() {
 }
 
 void MainWindow::changeImage(int value) {
-	m_label_frame_second->setPixmap(QPixmap::fromImage(m_images[value]).scaled(256, 256));
+	m_label_frame_first->setPixmap(QPixmap::fromImage(m_images[value]).scaled(256, 256));
+	m_label_frame_second->setPixmap(QPixmap::fromImage(m_cimages[value]->get()).scaled(256, 256));
 }
 
 // calculate the ssim
