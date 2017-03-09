@@ -19,4 +19,4 @@ LIBS += -lopencv_core \
 		-lopencv_imgproc \
 		-fopenmp 
 		
-INCLUDEPATH += 	/usr/include/opencv2/
+INCLUDEPATH += 	/usr/include/opencv2/ \

@@ -4,7 +4,7 @@
 #pragma once
 
 struct Dataset {
-	list<QImage> images;
+	vector<QImage> images;
 };
 
 #endif

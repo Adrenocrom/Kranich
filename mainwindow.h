@@ -5,9 +5,12 @@
 
 #include <QMainWindow>
 
+#include <opencv.hpp>
+
 struct Dataset;
 
 class QLabel;
+class QSlider;
 class QPushButton;
 class QProgressBar;
 class QStackedWidget;
@@ -19,11 +22,14 @@ public:
 	MainWindow();
 	~MainWindow();
 
-	Dataset* m_dataset;
+	std::vector<QImage> m_images;
+	std::list<int>		m_indices;
 
 private slots:
 	void importImages();
 	void exportDataset();
+
+	void changeImage(int value);
 
 private:
 
@@ -36,6 +42,7 @@ private:
 	QPushButton* m_button_import;
 
 	QProgressBar* m_progress_load;
+	QSlider*	  m_slider_pairs;
 
 	void createMenu();
 	void createWidgets();
@@ -47,6 +54,8 @@ private:
 	QWidget*		m_widget_empty;
 	QWidget*		m_widget_load;
 	QWidget* 		m_widget_main;
+
+	cv::Scalar getMSSIM( const cv::Mat& i1, const cv::Mat& i2);
 };
 
 #endif

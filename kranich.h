@@ -6,6 +6,8 @@
 // STL
 #include <stdio.h>
 #include <iostream>
+#include <vector>
+#include <list>
 
 // QT
 #include <QApplication>
@@ -19,9 +21,12 @@
 #include <QGroupBox>
 #include <QPushButton>
 #include <QLabel>
+#include <QSlider>
+#include <QLineEdit>
 #include <QProgressBar>
-//#include <QString>
-//#include <QStringList>
+
+// CV
+#include <opencv.hpp>
 
 #ifndef SAFE_DELETE
 #define SAFE_DELETE(p) { if(p != nullptr) { delete (p); (p) = nullptr; } }
