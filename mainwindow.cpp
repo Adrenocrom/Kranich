@@ -3,6 +3,9 @@
 
 using namespace cv;
 
+
+RNG rng(12345);
+
 MainWindow::MainWindow() {
 	// labels
 	m_label_frame_first  = nullptr;
@@ -115,8 +118,8 @@ void MainWindow::createWidgetMain() {
 void MainWindow::importImages() {
 	QStringList filenames = QFileDialog::getOpenFileNames(this,tr("BMP files"),QDir::currentPath(),tr("Bitmap files (*.bmp);;All files (*.*)") );
 	m_images.clear();
-	m_cimages.clear();
-
+	m_cv_images.clear();
+	m_cv_drawing.clear();
 	if( !filenames.isEmpty() ) {
 		m_widget_stacked->setCurrentIndex(KN_WIDGET_LOAD);
 		this->repaint();	
@@ -124,26 +127,24 @@ void MainWindow::importImages() {
 		m_progress_load->setValue(0);
 
 		filenames.sort();
-    	
+	
+		m_images.resize(filenames.count());
+		m_cv_images.resize(filenames.count());
+		m_cv_drawing.resize(filenames.count());
 		for(int i = 0; i < filenames.count(); i++) {
 			m_progress_load->setValue(i);
-    	    //cout<<filenames.at(i).toStdString()<<endl;
-			QImage img(filenames.at(i));
-			m_images.push_back(img);
-			m_cimages.push_back(new CImage(&img));
+			
+			Mat src = imread(filenames.at(i).toStdString(), 1);
+
+			cvtColor( src, m_cv_images[i], CV_BGR2GRAY );
+   			blur( m_cv_images[i], m_cv_images[i], Size(3,3) );
+
+			m_images[i]	= mat_to_qimage_cpy(src, QImage::Format_RGB888);
+			getParticels(m_cv_images[i], &m_cv_drawing[i]);
 		}
-
-		for(int i = 0; i < filenames.count(); i++) {
-			m_cimages[i]->invert();
-			m_cimages[i]->regionGrowing(120, 4000, 0);
-		}
-
-	//	CImage test(&m_images[0]);
-	//	test.invert();
-	//	test.regionGrowing(120, 4000, 0);
-
+		
 		m_label_frame_first->setPixmap(QPixmap::fromImage(m_images[0]).scaled(256, 256));
-		m_label_frame_second->setPixmap(QPixmap::fromImage(m_cimages[0]->get()).scaled(256, 256));
+		m_label_frame_second->setPixmap(QPixmap::fromImage(mat_to_qimage_ref(m_cv_drawing[0], QImage::Format_RGB888).scaled(256, 256)));
 
 		m_slider_pairs->setMaximum(filenames.count()-1);
 
@@ -161,7 +162,48 @@ void MainWindow::exportDataset() {
 
 void MainWindow::changeImage(int value) {
 	m_label_frame_first->setPixmap(QPixmap::fromImage(m_images[value]).scaled(256, 256));
-	m_label_frame_second->setPixmap(QPixmap::fromImage(m_cimages[value]->get()).scaled(256, 256));
+	m_label_frame_second->setPixmap(QPixmap::fromImage(mat_to_qimage_ref(m_cv_drawing[value], QImage::Format_RGB888).scaled(256, 256)));
+}
+
+ParticlesInfo MainWindow::getParticels(const cv::Mat& in, cv::Mat* out) {
+	int thresh = 100;
+
+	ParticlesInfo pinfo;
+
+	Mat threshold_output;
+	vector<vector<Point> > contours;
+	vector<Vec4i> hierarchy;
+
+  	/// Detect edges using Threshold
+	threshold( in, threshold_output, thresh, 255, THRESH_BINARY );
+	
+	/// Find contours
+	findContours( threshold_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+
+	/// Approximate contours to polygons + get bounding rects and circles
+	pinfo.contours_poly.resize( contours.size() );
+	pinfo.boundRect.resize( contours.size() );
+	pinfo.center.resize( contours.size() );
+	pinfo.radius.resize( contours.size() );
+
+	for( int i = 0; i < contours.size(); i++ ) { 
+		approxPolyDP( Mat(contours[i]), pinfo.contours_poly[i], 3, true );
+		pinfo.boundRect[i] = boundingRect( Mat(pinfo.contours_poly[i]) );
+		minEnclosingCircle( (Mat)pinfo.contours_poly[i], pinfo.center[i], pinfo.radius[i] );
+	}
+
+	if(out != nullptr) {
+		/// Draw polygonal contour + bonding rects + circles
+		*out = Mat::zeros( threshold_output.size(), CV_8UC3 );
+		for( int i = 0; i< contours.size(); i++ ) {
+    		Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+    		drawContours( *out, pinfo.contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
+    		rectangle( *out, pinfo.boundRect[i].tl(), pinfo.boundRect[i].br(), color, 2, 8, 0 );
+    		circle( *out, pinfo.center[i], (int)pinfo.radius[i], color, 2, 8, 0 );
+    	}
+	}
+
+	return pinfo;
 }
 
 // calculate the ssim

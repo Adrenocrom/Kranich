@@ -15,6 +15,13 @@ class QPushButton;
 class QProgressBar;
 class QStackedWidget;
 
+struct ParticlesInfo {
+	std::vector<std::vector<cv::Point> > contours_poly;
+	std::vector<cv::Rect> 		   	boundRect;
+	std::vector<cv::Point2f>  		center;
+	std::vector<float>				radius;
+};
+
 class MainWindow : public QMainWindow {
 	Q_OBJECT
 
@@ -23,7 +30,9 @@ public:
 	~MainWindow();
 
 	std::vector<QImage> m_images;
-	std::vector<CImage*> m_cimages;
+	std::vector<cv::Mat> m_cv_images;
+	std::vector<cv::Mat> m_cv_drawing;
+	std::vector<ParticlesInfo> m_particleinfos;
 
 private slots:
 	void importImages();
@@ -56,6 +65,8 @@ private:
 	QWidget* 		m_widget_main;
 
 	cv::Scalar getMSSIM( const cv::Mat& i1, const cv::Mat& i2);
+
+	ParticlesInfo getParticels(const cv::Mat& in, cv::Mat* out = nullptr);
 };
 
 #endif

@@ -42,6 +42,14 @@ using namespace std;
 #define KN_WIDGET_LOAD	1
 #define KN_WIDGET_MAIN	2
 
+
+QImage mat_to_qimage_ref(cv::Mat &mat, QImage::Format format);
+QImage mat_to_qimage_cpy(cv::Mat const &mat, QImage::Format format);
+cv::Mat qimage_to_mat_ref(QImage &img, int format);
+cv::Mat qimage_to_mat_cpy(QImage const &img, int format);
+
+//extern RNG rng;
+
 // PROJECT
 #include "image.h"
 #include "mainwindow.h"
