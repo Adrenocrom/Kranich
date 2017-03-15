@@ -8,24 +8,24 @@ RNG rng(12345);
 
 MainWindow::MainWindow() {
 	// labels
-	m_label_frame_first  = nullptr;
-	m_label_frame_second = nullptr;
+	m_label_frame  = nullptr;
 
 	// widgets
 	m_widget_stacked 	= nullptr;
 	m_widget_empty		= nullptr;
 
+	m_radius = 50;
+
 	createMenu();
 	createWidgets();
 
-	setMinimumSize(640, 480);
-	setMaximumSize(640, 480);
+	setMinimumSize(1024, 768);
+	setMaximumSize(1024, 768);
 
 }
 
 MainWindow::~MainWindow() {
-	SAFE_DELETE(m_label_frame_first);
-	SAFE_DELETE(m_label_frame_second);
+	SAFE_DELETE(m_label_frame);
 	SAFE_DELETE(m_widget_empty);
 	SAFE_DELETE(m_widget_stacked);
 }
@@ -95,22 +95,74 @@ void MainWindow::createWidgetMain() {
 	m_widget_main = new QWidget;
 	QGridLayout* gridLayout = new QGridLayout;
 	
-	m_label_frame_first = new QLabel("");
-	m_label_frame_first->setMinimumSize(256, 256);
-	m_label_frame_first->setMaximumSize(256, 256);
-
-	m_label_frame_second = new QLabel("");
-	m_label_frame_second->setMinimumSize(256, 256);
-	m_label_frame_second->setMaximumSize(256, 256);
+	m_label_frame = new QLabel("");
+	m_label_frame->setMinimumSize(256, 256);
+	m_label_frame->setMaximumSize(256, 256);
 
 	m_slider_pairs = new QSlider(Qt::Horizontal);
 	connect(m_slider_pairs, &QSlider::sliderMoved, this, &MainWindow::changeImage);
+	
+	m_slider_radius = new QSlider(Qt::Horizontal);
+	connect(m_slider_radius, &QSlider::sliderMoved, this, &MainWindow::changeRadius);
 
-	gridLayout->addWidget(new QLineEdit(), 0, 0, 1, 2);
-	gridLayout->addWidget(m_label_frame_first, 1, 0);
-	gridLayout->addWidget(m_label_frame_second, 1, 1);
-	gridLayout->addWidget(m_slider_pairs, 2, 0, 1, 2);
-	//gridLayout->setSizeConstraint(QLayout::SetFixedSize);
+	gridLayout->addWidget(m_label_frame, 1, 0, 1, 2);
+	gridLayout->addWidget(m_slider_pairs, 3, 0, 1, 2);
+	gridLayout->addWidget(new QLabel("radius"), 4, 0, 1, 1);
+	gridLayout->addWidget(m_slider_radius, 4, 1, 1, 1);
+
+	QGroupBox *groupBox = new QGroupBox(tr("this frame"));
+
+
+	m_check_show_radius			= new QCheckBox(tr("show radius"));
+	m_check_show_boundingbox 	= new QCheckBox(tr("show bounding box"));
+	m_check_show_sphere 		= new QCheckBox(tr("show sphere"));
+	m_check_show_polygon 		= new QCheckBox(tr("show polygon"));
+	
+	m_check_show_radius->setChecked(true);
+	m_check_show_boundingbox->setChecked(true);
+	m_check_show_sphere->setChecked(true);
+	m_check_show_polygon->setChecked(true);
+
+	connect(m_check_show_radius,	  &QCheckBox::stateChanged, this, &MainWindow::drawImage);
+	connect(m_check_show_boundingbox, &QCheckBox::stateChanged, this, &MainWindow::drawImage);
+	connect(m_check_show_sphere, 	  &QCheckBox::stateChanged, this, &MainWindow::drawImage);
+	connect(m_check_show_polygon, 	  &QCheckBox::stateChanged, this, &MainWindow::drawImage);
+	
+	QVBoxLayout *vbox = new QVBoxLayout;
+	vbox->addWidget(m_check_show_radius);
+  	vbox->addWidget(m_check_show_boundingbox);
+  	vbox->addWidget(m_check_show_sphere);
+  	vbox->addWidget(m_check_show_polygon);
+	
+	//vbox->addStretch(1);
+	groupBox->setLayout(vbox);
+	gridLayout->addWidget(groupBox, 5, 0, 1, 1);
+
+
+	QGroupBox *groupBoxN = new QGroupBox(tr("next frame"));
+
+	m_check_show_boundingbox_next 	= new QCheckBox(tr("show bounding box"));
+	m_check_show_sphere_next 		= new QCheckBox(tr("show sphere"));
+	m_check_show_polygon_next 		= new QCheckBox(tr("show polygon"));
+
+	m_check_show_boundingbox_next->setChecked(true);
+	m_check_show_sphere_next->setChecked(true);
+	m_check_show_polygon_next->setChecked(true);
+	
+	connect(m_check_show_boundingbox_next, 	&QCheckBox::stateChanged, this, &MainWindow::drawImage);
+	connect(m_check_show_sphere_next, 	  	&QCheckBox::stateChanged, this, &MainWindow::drawImage);
+	connect(m_check_show_polygon_next, 	  	&QCheckBox::stateChanged, this, &MainWindow::drawImage);
+
+	QVBoxLayout *vboxN = new QVBoxLayout;
+	vboxN->addWidget(m_check_show_boundingbox_next);
+	vboxN->addWidget(m_check_show_sphere_next);
+	vboxN->addWidget(m_check_show_polygon_next);
+	//vboxN->addStretch(1);
+	groupBoxN->setLayout(vboxN);
+	gridLayout->addWidget(groupBoxN, 5, 1, 1, 1 );
+
+
+
 	m_widget_main->setLayout(gridLayout);
 	m_widget_stacked->addWidget(m_widget_main);
 }
@@ -119,7 +171,7 @@ void MainWindow::importImages() {
 	QStringList filenames = QFileDialog::getOpenFileNames(this,tr("BMP files"),QDir::currentPath(),tr("Bitmap files (*.bmp);;All files (*.*)") );
 	m_images.clear();
 	m_cv_images.clear();
-	m_cv_drawing.clear();
+	m_particleinfos.clear();
 	if( !filenames.isEmpty() ) {
 		m_widget_stacked->setCurrentIndex(KN_WIDGET_LOAD);
 		this->repaint();	
@@ -130,7 +182,7 @@ void MainWindow::importImages() {
 	
 		m_images.resize(filenames.count());
 		m_cv_images.resize(filenames.count());
-		m_cv_drawing.resize(filenames.count());
+		m_particleinfos.resize(filenames.count());
 		for(int i = 0; i < filenames.count(); i++) {
 			m_progress_load->setValue(i);
 			
@@ -140,20 +192,39 @@ void MainWindow::importImages() {
    			blur( m_cv_images[i], m_cv_images[i], Size(3,3) );
 
 			m_images[i]	= mat_to_qimage_cpy(src, QImage::Format_RGB888);
-			getParticels(m_cv_images[i], &m_cv_drawing[i]);
+			m_particleinfos[i] = getParticles(m_cv_images[i]);
 		}
 		
-		m_label_frame_first->setPixmap(QPixmap::fromImage(m_images[0]).scaled(256, 256));
-		m_label_frame_second->setPixmap(QPixmap::fromImage(mat_to_qimage_ref(m_cv_drawing[0], QImage::Format_RGB888).scaled(256, 256)));
 
+		m_halfwidth  = (int)((float)m_cv_images[0].cols / 2.0f);
+		m_halfheight = (int)((float)m_cv_images[0].rows / 2.0f);
+			
 		m_slider_pairs->setMaximum(filenames.count()-1);
+		m_slider_pairs->setValue(0);
+		m_index = 0;
 
+
+		m_label_frame->setMinimumSize(m_halfwidth, m_halfheight);
+		m_label_frame->setMaximumSize(m_halfwidth, m_halfheight);
+		drawImage();
+		//m_label_frame->setPixmap(QPixmap::fromImage(drawImage()).scaled(m_halfwidth, m_halfheight));
+			
+	
 		m_widget_stacked->setCurrentIndex(KN_WIDGET_MAIN);
 		this->repaint();
+
+		setMinimumSize(minimumSizeHint());
+		setMaximumSize(minimumSizeHint());
+		this->resize(minimumSizeHint());
 	} else {
 		m_widget_stacked->setCurrentIndex(KN_WIDGET_EMPTY);
 		this->repaint();
 	}
+}
+
+void MainWindow::changeRadius(int value) {
+	m_radius = value;
+	drawImage();
 }
 
 void MainWindow::exportDataset() {
@@ -161,11 +232,86 @@ void MainWindow::exportDataset() {
 }
 
 void MainWindow::changeImage(int value) {
-	m_label_frame_first->setPixmap(QPixmap::fromImage(m_images[value]).scaled(256, 256));
-	m_label_frame_second->setPixmap(QPixmap::fromImage(mat_to_qimage_ref(m_cv_drawing[value], QImage::Format_RGB888).scaled(256, 256)));
+	m_index	= value;
+	drawImage();
 }
 
-ParticlesInfo MainWindow::getParticels(const cv::Mat& in, cv::Mat* out) {
+void MainWindow::createPairs() {
+	
+}
+ 
+bool MainWindow::calcFriends(int a, int b) {
+	ParticlesInfo& pinfo 		= m_particleinfos[a];
+	ParticlesInfo& pinfo_next 	= m_particleinfos[b];
+	pinfo.friends.resize(pinfo.radius.size());
+
+	cout<<"--"<<endl;
+	for(int i = 1; i < pinfo.radius.size(); ++i) {
+		vector<pair<int, double> > friends;
+
+		for(int j = 1; j < pinfo_next.radius.size(); ++j) {
+			Point2f p = pinfo.center[i] - pinfo_next.center[j];
+
+			if(norm(p) < (double)m_radius) {
+				Mat I1 = m_cv_images[a](pinfo.boundRect[i]);
+				Mat I  = m_cv_images[b](pinfo_next.boundRect[j]);
+				Mat I2;
+				cv::resize(I, I2, I1.size());
+				double score = exp(-(double)(pinfo.radius[i] - pinfo_next.radius[j]))*getPSNR(I1, I2);
+				
+				friends.push_back(make_pair(j, score));
+			}
+			
+		}
+
+		pinfo.friends[i] = friends;
+	}
+
+	return true;
+}
+
+Mat MainWindow::drawImage() {
+	Mat drawing;
+	if(m_index < (m_particleinfos.size()-1) ) {
+		cvtColor( m_cv_images[m_index], drawing, CV_GRAY2BGR );
+		ParticlesInfo* pinfo = &m_particleinfos[m_index];
+		ParticlesInfo* pinfo_next= &m_particleinfos[m_index+1];
+		
+		for(int i = 1; i < pinfo->radius.size(); i++) {
+			Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+    		if(m_check_show_polygon->isChecked()) 		drawContours(drawing, pinfo->contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
+    		if(m_check_show_boundingbox->isChecked()) 	rectangle(drawing, pinfo->boundRect[i].tl(), pinfo->boundRect[i].br(), color, 2, 8, 0 );
+    		if(m_check_show_sphere->isChecked()) 		circle(drawing, pinfo->center[i], (int)pinfo->radius[i], color, 2, 8, 0 );
+		}
+
+		for(int i = 1; i < pinfo_next->radius.size(); i++) {
+			Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+    		if(m_check_show_polygon_next->isChecked())		drawContours(drawing, pinfo_next->contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
+    		if(m_check_show_boundingbox_next->isChecked())	rectangle(drawing, pinfo_next->boundRect[i].tl(), pinfo_next->boundRect[i].br(), color, 2, 8, 0 );
+    		if(m_check_show_sphere_next->isChecked())		circle(drawing, pinfo_next->center[i], (int)pinfo_next->radius[i], color, 2, 8, 0 );
+		}
+
+	
+		if(m_check_show_radius->isChecked()) {
+			for(int i = 1; i < pinfo->radius.size(); i++) {
+    			circle(drawing, pinfo->center[i], m_radius, Scalar(255, 255, 255) , 2, 8, 0 );
+			}
+		}
+		calcFriends(m_index, m_index+1);
+
+		for(int i = 1; i < pinfo->friends.size(); ++i) {
+			for(int j = 0; j < pinfo->friends[i].size(); ++j) {
+				line(drawing, pinfo->center[i], pinfo_next->center[pinfo->friends[i][j].first], Scalar(255, 0, 0), 2, 8, 0);
+			}
+		}
+
+		m_label_frame->setPixmap(QPixmap::fromImage(mat_to_qimage_ref(drawing, QImage::Format_RGB888).scaled(m_halfwidth, m_halfheight)));
+	}
+
+	return drawing;
+}
+
+ParticlesInfo MainWindow::getParticles(const cv::Mat& in) {
 	int thresh = 100;
 
 	ParticlesInfo pinfo;
@@ -186,29 +332,17 @@ ParticlesInfo MainWindow::getParticels(const cv::Mat& in, cv::Mat* out) {
 	pinfo.center.resize( contours.size() );
 	pinfo.radius.resize( contours.size() );
 
-	for( int i = 0; i < contours.size(); i++ ) { 
+	for( unsigned int i = 0; i < contours.size(); i++ ) { 
 		approxPolyDP( Mat(contours[i]), pinfo.contours_poly[i], 3, true );
 		pinfo.boundRect[i] = boundingRect( Mat(pinfo.contours_poly[i]) );
 		minEnclosingCircle( (Mat)pinfo.contours_poly[i], pinfo.center[i], pinfo.radius[i] );
-	}
-
-	if(out != nullptr) {
-		/// Draw polygonal contour + bonding rects + circles
-		*out = Mat::zeros( threshold_output.size(), CV_8UC3 );
-		for( int i = 0; i< contours.size(); i++ ) {
-    		Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
-    		drawContours( *out, pinfo.contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
-    		rectangle( *out, pinfo.boundRect[i].tl(), pinfo.boundRect[i].br(), color, 2, 8, 0 );
-    		circle( *out, pinfo.center[i], (int)pinfo.radius[i], color, 2, 8, 0 );
-    	}
 	}
 
 	return pinfo;
 }
 
 // calculate the ssim
-Scalar MainWindow::getMSSIM( const Mat& i1, const Mat& i2)
-{
+Scalar MainWindow::getMSSIM( const Mat& i1, const Mat& i2) {
     const double C1 = 6.5025, C2 = 58.5225;
     /***************************** INITS **********************************/
     int d     = CV_32F;
@@ -260,5 +394,24 @@ Scalar MainWindow::getMSSIM( const Mat& i1, const Mat& i2)
 
 	mssim[3] = (mssim[0] + mssim[1] + mssim[2]) / 3.0; // save mead in alpha
 
-return mssim;
+	return mssim;
+}
+
+double MainWindow::getPSNR(const Mat& I1, const Mat& I2) {
+    Mat s1;
+    absdiff(I1, I2, s1);       // |I1 - I2|
+    s1.convertTo(s1, CV_32F);  // cannot make a square on 8 bits
+    s1 = s1.mul(s1);           // |I1 - I2|^2
+
+    Scalar s = sum(s1);        // sum elements per channel
+
+    double sse = s.val[0] + s.val[1] + s.val[2]; // sum channels
+
+    if( sse <= 1e-10) // for small values return zero
+        return 0;
+    else {
+        double mse  = sse / (double)(I1.channels() * I1.total());
+        double psnr = 10.0 * log10((255 * 255) / mse);
+        return psnr;
+    }
 }

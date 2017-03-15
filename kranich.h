@@ -19,11 +19,13 @@
 #include <QGridLayout>
 #include <QFormLayout>
 #include <QGroupBox>
+#include <QCheckBox>
 #include <QPushButton>
 #include <QLabel>
 #include <QSlider>
 #include <QLineEdit>
 #include <QProgressBar>
+#include <QVBoxLayout>
 
 // CV
 #include <opencv.hpp>
