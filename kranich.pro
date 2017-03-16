@@ -1,4 +1,4 @@
-QT += core gui widgets websockets opengl
+QT += core gui widgets
 
 TARGET = kranich
 TEMPLATE = app
