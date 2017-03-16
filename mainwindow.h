@@ -15,6 +15,7 @@ class QPushButton;
 class QProgressBar;
 class QStackedWidget;
 class QCheckBox;
+class QLineEdit;
 
 struct ParticlesInfo {
 	std::vector<std::vector<cv::Point> > contours_poly;
@@ -38,13 +39,10 @@ public:
 
 private slots:
 	void importImages();
-	void exportDataset();
 
 	void changeImage(int value);
 	void changeRadius(int value);
 	void changeThreshold(int value);
-
-	void createPairs();
 
 	void evaluate();
 
@@ -58,7 +56,6 @@ private:
 	int			m_radius;
 
 	QAction* m_action_import;
-	QAction* m_action_export;
 
 	QLabel*  m_label_frame;
 
@@ -71,15 +68,23 @@ private:
 
 	QLabel*		  m_label_threshold;
 	QLabel*		  m_label_radius;
+	
+	QCheckBox*	  m_check_show_radius;
+	QCheckBox*	  m_check_show_links;
 
 	QCheckBox*	  m_check_show_boundingbox;
 	QCheckBox*	  m_check_show_sphere;
 	QCheckBox*	  m_check_show_polygon;
-	QCheckBox*	  m_check_show_radius;
 
 	QCheckBox*	  m_check_show_boundingbox_next;
 	QCheckBox*	  m_check_show_sphere_next;
 	QCheckBox*	  m_check_show_polygon_next;
+
+	QLineEdit*	  m_line_scale_time;
+	QLineEdit*	  m_line_scale_distance;
+	QLineEdit*	  m_line_scale_density;
+
+	QPushButton*  m_button_export;
 	
 	void createMenu();
 	void createWidgets();

@@ -35,12 +35,9 @@ void MainWindow::createMenu() {
 	
 	m_action_import = new QAction(tr("import"), this);
 	menu_file->addAction(m_action_import);
-	m_action_export = new QAction(tr("export"), this);
-	menu_file->addAction(m_action_export);
 	menu_file->addSeparator();
 
 	connect(m_action_import, &QAction::triggered, this, &MainWindow::importImages);
-	connect(m_action_export, &QAction::triggered, this, &MainWindow::exportDataset);
 
 	QAction* action_quit = menu_file->addAction(tr("&Quit"), this, &QWidget::close);
    	action_quit->setShortcuts(QKeySequence::Quit);
@@ -122,33 +119,44 @@ void MainWindow::createWidgetMain() {
 	gridLayout->addWidget(m_slider_radius, 5, 1, 1, 4);
 	gridLayout->addWidget(m_label_radius, 5, 5, 1, 1);
 
-	QGroupBox *groupBox = new QGroupBox(tr("this frame"));
-
+	QGroupBox* gb2 = new QGroupBox(tr(""));
+	QHBoxLayout* hbox2 = new QHBoxLayout;
 
 	m_check_show_radius			= new QCheckBox(tr("show radius"));
+	m_check_show_radius->setChecked(true);
+	connect(m_check_show_radius,	  &QCheckBox::stateChanged, this, &MainWindow::drawImage);
+	
+	m_check_show_links			= new QCheckBox(tr("show links"));
+	m_check_show_links->setChecked(true);
+	connect(m_check_show_links,	&QCheckBox::stateChanged, this, &MainWindow::drawImage);
+
+	hbox2->addWidget(m_check_show_radius);
+	hbox2->addWidget(m_check_show_links);
+	gb2->setLayout(hbox2);
+	gridLayout->addWidget(gb2, 6, 0, 1, 6);
+
+	QGroupBox *groupBox = new QGroupBox(tr("this frame"));
+
 	m_check_show_boundingbox 	= new QCheckBox(tr("show bounding box"));
 	m_check_show_sphere 		= new QCheckBox(tr("show sphere"));
 	m_check_show_polygon 		= new QCheckBox(tr("show polygon"));
 	
-	m_check_show_radius->setChecked(true);
 	m_check_show_boundingbox->setChecked(true);
 	m_check_show_sphere->setChecked(true);
 	m_check_show_polygon->setChecked(true);
 
-	connect(m_check_show_radius,	  &QCheckBox::stateChanged, this, &MainWindow::drawImage);
 	connect(m_check_show_boundingbox, &QCheckBox::stateChanged, this, &MainWindow::drawImage);
 	connect(m_check_show_sphere, 	  &QCheckBox::stateChanged, this, &MainWindow::drawImage);
 	connect(m_check_show_polygon, 	  &QCheckBox::stateChanged, this, &MainWindow::drawImage);
 	
 	QVBoxLayout *vbox = new QVBoxLayout;
-	vbox->addWidget(m_check_show_radius);
   	vbox->addWidget(m_check_show_boundingbox);
   	vbox->addWidget(m_check_show_sphere);
   	vbox->addWidget(m_check_show_polygon);
 	
 	//vbox->addStretch(1);
 	groupBox->setLayout(vbox);
-	gridLayout->addWidget(groupBox, 6, 0, 1, 3);
+	gridLayout->addWidget(groupBox, 7, 0, 1, 3);
 
 
 	QGroupBox *groupBoxN = new QGroupBox(tr("next frame"));
@@ -171,9 +179,27 @@ void MainWindow::createWidgetMain() {
 	vboxN->addWidget(m_check_show_polygon_next);
 	//vboxN->addStretch(1);
 	groupBoxN->setLayout(vboxN);
-	gridLayout->addWidget(groupBoxN, 6, 3, 1, 3 );
+	gridLayout->addWidget(groupBoxN, 7, 3, 1, 3 );
 
+	QGroupBox*	gb = new QGroupBox(tr("scale factors"));
+	QHBoxLayout* hbox = new QHBoxLayout;
 
+	m_line_scale_time		= new QLineEdit("1.0");
+	m_line_scale_distance	= new QLineEdit("1.0");
+	m_line_scale_density	= new QLineEdit("1.0");
+	m_button_export			= new QPushButton(tr("export"));
+	connect(m_button_export, &QPushButton::pressed, this, &MainWindow::evaluate);
+
+	hbox->addWidget(new QLabel("time"));
+	hbox->addWidget(m_line_scale_time);
+	hbox->addWidget(new QLabel("distance"));
+	hbox->addWidget(m_line_scale_distance);
+	hbox->addWidget(new QLabel("density"));
+	hbox->addWidget(m_line_scale_density);
+	hbox->addWidget(m_button_export);
+
+	gb->setLayout(hbox);
+	gridLayout->addWidget(gb, 8, 0, 1, 6);
 
 	m_widget_main->setLayout(gridLayout);
 	m_widget_stacked->addWidget(m_widget_main);
@@ -251,20 +277,56 @@ void MainWindow::changeRadius(int value) {
 	drawImage();
 }
 
-void MainWindow::exportDataset() {
-	QString filename = QFileDialog::getSaveFileName(this,tr("CSV files"),QDir::currentPath(),tr("CSV files (*.csv);;All files (*.*)") );
-}
-
 void MainWindow::changeImage(int value) {
 	m_index	= value;
 	drawImage();
 }
 
-void MainWindow::createPairs() {
-	
-}
-
 void MainWindow::evaluate() {
+	QString filename = QFileDialog::getSaveFileName(this,tr("CSV files"),QDir::currentPath(),tr("CSV files (*.csv);;All files (*.*)") );
+	
+	ofstream file;
+  	file.open(filename.toStdString());
+	file<<"id,radius,volume,density,mass,velocity,E_kin\n";
+
+	int size 				= m_cv_images.size() - 1;
+	int cnt					= 0;
+	double	scale_time		= m_line_scale_time->text().toDouble();
+	double	scale_distance	= m_line_scale_distance->text().toDouble();
+	double	scale_density	= m_line_scale_density->text().toDouble();
+	double	mean_radius		= 0.0;
+	double	volume			= 0.0;
+	double  density			= 0.0;
+	double	mass			= 0.0;
+	double	distance		= 0.0;
+	double	velocity		= 0.0;
+	double	E_kin			= 0.0;
+	for(int i = 0; i < size; ++i) {
+		if(calcFriends(i, i+1) > 5.0) {
+			ParticlesInfo& pinfo 	  = m_particleinfos[i];
+			ParticlesInfo& pinfo_next = m_particleinfos[i+1];
+
+			for(int a = 0; a < pinfo.radius.size(); ++a) {
+				if(pinfo.friends[a].size() > 0) {
+					mean_radius = ((double) pinfo.radius[a] + (double) pinfo_next.radius[pinfo.friends[a][0].first]) / 2.0;
+					mean_radius *= scale_distance;
+					volume = (4.0/3.0) * KN_PI * pow(mean_radius, 3.0);
+					density= scale_density;
+					mass   = density * volume;
+
+					distance = norm(pinfo.center[a] - pinfo_next.center[pinfo.friends[a][0].first]);
+					distance*= scale_distance;
+					velocity = distance / scale_time;
+					E_kin	 = 0.5 * mass * pow(velocity, 2.0);
+					if(pinfo.center[a].x > pinfo_next.center[pinfo.friends[a][0].first].x)
+						E_kin *= -1;
+				
+					file<< cnt <<","<< mean_radius <<","<< volume <<","<< density <<","<< mass << "," << velocity << "," << E_kin <<"\n";
+					cnt++;
+				}
+			}
+		}
+	}
 }
  
 double MainWindow::calcFriends(int a, int b) {
@@ -348,15 +410,17 @@ Mat MainWindow::drawImage() {
 		}
 		calcFriends(m_index, m_index+1);
 
-		for(int i = 1; i < pinfo->friends.size(); ++i) {
-			for(int j = 0; j < pinfo->friends[i].size(); ++j) {
-				if(pinfo->friends[i][j].second < 10.0) {
-					line(drawing, pinfo->center[i], pinfo_next->center[pinfo->friends[i][j].first], Scalar(255, 0, 0), 2, 8, 0);
-				}
-				else if(pinfo->friends[i][j].second < 20.0) {
-					line(drawing, pinfo->center[i], pinfo_next->center[pinfo->friends[i][j].first], Scalar(255, 255, 0), 2, 8, 0);
-				} else {
-					line(drawing, pinfo->center[i], pinfo_next->center[pinfo->friends[i][j].first], Scalar(0, 255, 0), 2, 8, 0);
+		if(m_check_show_links->isChecked()) {
+			for(int i = 1; i < pinfo->friends.size(); ++i) {
+				for(int j = 0; j < pinfo->friends[i].size(); ++j) {
+					if(pinfo->friends[i][j].second < 10.0) {
+						line(drawing, pinfo->center[i], pinfo_next->center[pinfo->friends[i][j].first], Scalar(255, 0, 0), 2, 8, 0);
+					}
+					else if(pinfo->friends[i][j].second < 20.0) {
+						line(drawing, pinfo->center[i], pinfo_next->center[pinfo->friends[i][j].first], Scalar(255, 255, 0), 2, 8, 0);
+					} else {
+						line(drawing, pinfo->center[i], pinfo_next->center[pinfo->friends[i][j].first], Scalar(0, 255, 0), 2, 8, 0);
+					}
 				}
 			}
 		}

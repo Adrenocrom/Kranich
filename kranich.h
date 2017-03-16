@@ -8,6 +8,7 @@
 #include <iostream>
 #include <vector>
 #include <list>
+#include <fstream>
 
 // QT
 #include <QApplication>
@@ -26,6 +27,8 @@
 #include <QLineEdit>
 #include <QProgressBar>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QLineEdit>
 
 // CV
 #include <opencv.hpp>
@@ -36,6 +39,10 @@
 
 #ifndef SAFE_DELETE_ARRAY
 #define SAFE_DELETE_ARRAY(p) { if(p != nullptr) { delete[] (p); (p) = nullptr; } }
+#endif
+
+#ifndef KN_PI
+#define KN_PI 3.1415926535897932384626433832795
 #endif
 
 using namespace std;
