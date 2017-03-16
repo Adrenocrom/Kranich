@@ -42,8 +42,11 @@ private slots:
 
 	void changeImage(int value);
 	void changeRadius(int value);
+	void changeThreshold(int value);
 
 	void createPairs();
+
+	void evaluate();
 
 	cv::Mat		  drawImage();
 
@@ -62,8 +65,12 @@ private:
 	QPushButton* m_button_import;
 
 	QProgressBar* m_progress_load;
-	QSlider*	  m_slider_pairs;
+	QSlider*	  m_slider_images;
+	QSlider*	  m_slider_threshold;
 	QSlider*	  m_slider_radius;
+
+	QLabel*		  m_label_threshold;
+	QLabel*		  m_label_radius;
 
 	QCheckBox*	  m_check_show_boundingbox;
 	QCheckBox*	  m_check_show_sphere;
@@ -88,8 +95,8 @@ private:
 	cv::Scalar getMSSIM( const cv::Mat& i1, const cv::Mat& i2);
 	double getPSNR(const cv::Mat& I1, const cv::Mat& I2);
 
-	ParticlesInfo getParticles(const cv::Mat& in);
-	bool		  calcFriends(int a, int b);
+	ParticlesInfo getParticles(const cv::Mat& in, int thresh = 100);
+	double		  calcFriends(int a, int b);
 };
 
 #endif

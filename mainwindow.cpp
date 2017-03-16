@@ -99,16 +99,28 @@ void MainWindow::createWidgetMain() {
 	m_label_frame->setMinimumSize(256, 256);
 	m_label_frame->setMaximumSize(256, 256);
 
-	m_slider_pairs = new QSlider(Qt::Horizontal);
-	connect(m_slider_pairs, &QSlider::sliderMoved, this, &MainWindow::changeImage);
-	
-	m_slider_radius = new QSlider(Qt::Horizontal);
-	connect(m_slider_radius, &QSlider::sliderMoved, this, &MainWindow::changeRadius);
+	m_slider_images = new QSlider(Qt::Horizontal);
+	connect(m_slider_images, &QSlider::valueChanged, this, &MainWindow::changeImage);
 
-	gridLayout->addWidget(m_label_frame, 1, 0, 1, 2);
-	gridLayout->addWidget(m_slider_pairs, 3, 0, 1, 2);
-	gridLayout->addWidget(new QLabel("radius"), 4, 0, 1, 1);
-	gridLayout->addWidget(m_slider_radius, 4, 1, 1, 1);
+	m_slider_threshold = new QSlider(Qt::Horizontal);
+	m_slider_threshold->setRange(0, 255);
+	m_slider_threshold->setValue(100);
+	connect(m_slider_threshold, &QSlider::valueChanged, this, &MainWindow::changeThreshold);
+	m_label_threshold = new QLabel(tr("100"));
+
+	m_slider_radius = new QSlider(Qt::Horizontal);
+	m_slider_radius->setRange(0, 100);
+	m_label_radius = new QLabel(tr("50"));
+	connect(m_slider_radius, &QSlider::valueChanged, this, &MainWindow::changeRadius);
+
+	gridLayout->addWidget(m_label_frame, 1, 0, 1, 6);
+	gridLayout->addWidget(m_slider_images, 3, 0, 1, 6);
+	gridLayout->addWidget(new QLabel("threshold"), 4, 0, 1, 1);
+	gridLayout->addWidget(m_slider_threshold, 4, 1, 1, 4);
+	gridLayout->addWidget(m_label_threshold, 4, 5, 1, 1);
+	gridLayout->addWidget(new QLabel("radius"), 5, 0, 1, 1);
+	gridLayout->addWidget(m_slider_radius, 5, 1, 1, 4);
+	gridLayout->addWidget(m_label_radius, 5, 5, 1, 1);
 
 	QGroupBox *groupBox = new QGroupBox(tr("this frame"));
 
@@ -136,7 +148,7 @@ void MainWindow::createWidgetMain() {
 	
 	//vbox->addStretch(1);
 	groupBox->setLayout(vbox);
-	gridLayout->addWidget(groupBox, 5, 0, 1, 1);
+	gridLayout->addWidget(groupBox, 6, 0, 1, 3);
 
 
 	QGroupBox *groupBoxN = new QGroupBox(tr("next frame"));
@@ -159,7 +171,7 @@ void MainWindow::createWidgetMain() {
 	vboxN->addWidget(m_check_show_polygon_next);
 	//vboxN->addStretch(1);
 	groupBoxN->setLayout(vboxN);
-	gridLayout->addWidget(groupBoxN, 5, 1, 1, 1 );
+	gridLayout->addWidget(groupBoxN, 6, 3, 1, 3 );
 
 
 
@@ -199,9 +211,10 @@ void MainWindow::importImages() {
 		m_halfwidth  = (int)((float)m_cv_images[0].cols / 2.0f);
 		m_halfheight = (int)((float)m_cv_images[0].rows / 2.0f);
 			
-		m_slider_pairs->setMaximum(filenames.count()-1);
-		m_slider_pairs->setValue(0);
+		m_slider_images->setMaximum(filenames.count()-1);
+		m_slider_images->setValue(0);
 		m_index = 0;
+		m_slider_radius->setValue(m_radius);
 
 
 		m_label_frame->setMinimumSize(m_halfwidth, m_halfheight);
@@ -222,8 +235,19 @@ void MainWindow::importImages() {
 	}
 }
 
+void MainWindow::changeThreshold(int value) {
+	m_label_threshold->setText(QString::number(value));
+	
+	for(int i = 0; i < m_cv_images.size(); ++i) {
+		m_particleinfos[i] = getParticles(m_cv_images[i], value);
+	}
+
+	drawImage();
+}
+
 void MainWindow::changeRadius(int value) {
 	m_radius = value;
+	m_label_radius->setText(QString::number(value));
 	drawImage();
 }
 
@@ -239,15 +263,17 @@ void MainWindow::changeImage(int value) {
 void MainWindow::createPairs() {
 	
 }
+
+void MainWindow::evaluate() {
+}
  
-bool MainWindow::calcFriends(int a, int b) {
+double MainWindow::calcFriends(int a, int b) {
 	ParticlesInfo& pinfo 		= m_particleinfos[a];
 	ParticlesInfo& pinfo_next 	= m_particleinfos[b];
 	pinfo.friends.resize(pinfo.radius.size());
 
-	cout<<"--"<<endl;
 	for(int i = 1; i < pinfo.radius.size(); ++i) {
-		vector<pair<int, double> > friends;
+		list<pair<int, double> > friends_list;
 
 		for(int j = 1; j < pinfo_next.radius.size(); ++j) {
 			Point2f p = pinfo.center[i] - pinfo_next.center[j];
@@ -257,17 +283,40 @@ bool MainWindow::calcFriends(int a, int b) {
 				Mat I  = m_cv_images[b](pinfo_next.boundRect[j]);
 				Mat I2;
 				cv::resize(I, I2, I1.size());
-				double score = exp(-(double)(pinfo.radius[i] - pinfo_next.radius[j]))*getPSNR(I1, I2);
+				double scale = exp(-pow((double)(pinfo.radius[i] - pinfo_next.radius[j]), 2.0));
+				double score = scale*getPSNR(I1, I2);
 				
-				friends.push_back(make_pair(j, score));
+				friends_list.push_back(make_pair(j, score));
 			}
 			
 		}
-
+		friends_list.sort([](const pair<int, double>& _p1, const pair<int, double>& _p2){
+			if(_p1.second > _p2.second)
+				return true;
+			return false;
+		});
+		
+		vector<pair<int, double> > friends(friends_list.begin(), friends_list.end());
 		pinfo.friends[i] = friends;
 	}
 
-	return true;
+	// calc global score
+	double global_score = 0.0;
+	for(int i = 1; i < pinfo.radius.size(); ++i) {
+		if(pinfo.friends[i].size() > 0) {
+			global_score += pinfo.friends[i][0].second;
+		} else {
+			global_score -= 20.0;
+		}
+	}
+
+	if(pinfo.radius.size() > 1) {
+		global_score /= pinfo.radius.size();
+	} else {
+		global_score = -100.0;
+	}
+
+	return global_score;
 }
 
 Mat MainWindow::drawImage() {
@@ -278,14 +327,14 @@ Mat MainWindow::drawImage() {
 		ParticlesInfo* pinfo_next= &m_particleinfos[m_index+1];
 		
 		for(int i = 1; i < pinfo->radius.size(); i++) {
-			Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+			Scalar color = Scalar(0, 0, 255);// rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
     		if(m_check_show_polygon->isChecked()) 		drawContours(drawing, pinfo->contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
     		if(m_check_show_boundingbox->isChecked()) 	rectangle(drawing, pinfo->boundRect[i].tl(), pinfo->boundRect[i].br(), color, 2, 8, 0 );
     		if(m_check_show_sphere->isChecked()) 		circle(drawing, pinfo->center[i], (int)pinfo->radius[i], color, 2, 8, 0 );
 		}
 
 		for(int i = 1; i < pinfo_next->radius.size(); i++) {
-			Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+			Scalar color = Scalar( 0, 255, 255);//rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
     		if(m_check_show_polygon_next->isChecked())		drawContours(drawing, pinfo_next->contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
     		if(m_check_show_boundingbox_next->isChecked())	rectangle(drawing, pinfo_next->boundRect[i].tl(), pinfo_next->boundRect[i].br(), color, 2, 8, 0 );
     		if(m_check_show_sphere_next->isChecked())		circle(drawing, pinfo_next->center[i], (int)pinfo_next->radius[i], color, 2, 8, 0 );
@@ -301,7 +350,14 @@ Mat MainWindow::drawImage() {
 
 		for(int i = 1; i < pinfo->friends.size(); ++i) {
 			for(int j = 0; j < pinfo->friends[i].size(); ++j) {
-				line(drawing, pinfo->center[i], pinfo_next->center[pinfo->friends[i][j].first], Scalar(255, 0, 0), 2, 8, 0);
+				if(pinfo->friends[i][j].second < 10.0) {
+					line(drawing, pinfo->center[i], pinfo_next->center[pinfo->friends[i][j].first], Scalar(255, 0, 0), 2, 8, 0);
+				}
+				else if(pinfo->friends[i][j].second < 20.0) {
+					line(drawing, pinfo->center[i], pinfo_next->center[pinfo->friends[i][j].first], Scalar(255, 255, 0), 2, 8, 0);
+				} else {
+					line(drawing, pinfo->center[i], pinfo_next->center[pinfo->friends[i][j].first], Scalar(0, 255, 0), 2, 8, 0);
+				}
 			}
 		}
 
@@ -311,9 +367,7 @@ Mat MainWindow::drawImage() {
 	return drawing;
 }
 
-ParticlesInfo MainWindow::getParticles(const cv::Mat& in) {
-	int thresh = 100;
-
+ParticlesInfo MainWindow::getParticles(const cv::Mat& in, int thresh) {
 	ParticlesInfo pinfo;
 
 	Mat threshold_output;
