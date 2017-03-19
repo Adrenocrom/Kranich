@@ -357,7 +357,7 @@ void MainWindow::evaluate() {
 	file<<"particle flow [g/min]"<<","<<m_line_particle_flow->text().toStdString()<<"\n";
 	file<<"threshold"<<","<<m_threshold<<"\n";
 	file<<"radius"<<","<<m_radius<<"\n\n";
-	file<<"id,radius [\u00B5m],volume [\u00B5m\u00B3],density,mass [\u00B5g],velocity [m/s],E_kin[\u00B5J],score,file1,file2\n";
+	file<<"id,radius [\u00B5m],volume [\u00B5m\u00B3],density [g/cm\u00B3],mass [\u00B5g],velocity [m/s],E_kin[\u00B5J],score,file1,file2\n";
 
 	int size 				= m_cv_images.size() - 1;
 	int cnt					= 0;
@@ -384,12 +384,14 @@ void MainWindow::evaluate() {
 					mean_radius *= scale_distance;
 					volume = (4.0/3.0) * KN_PI * pow(mean_radius, 3.0);
 					density= scale_density;
-					mass   = density * volume;
+					mass   = density * (volume * 1e-12);
 
 					distance = norm(pinfo.center[a] - pinfo_next.center[pinfo.friends[a][0].first]);
 					distance*= scale_distance;
 					velocity = distance / scale_time;
+					mass  *= 1e-3;
 					E_kin	 = 0.5 * mass * pow(velocity, 2.0);
+					mass  *= 1e-9;
 					if(pinfo.center[a].x > pinfo_next.center[pinfo.friends[a][0].first].x)
 						E_kin *= -1;
 				
