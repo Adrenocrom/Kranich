@@ -16,6 +16,7 @@ class QProgressBar;
 class QStackedWidget;
 class QCheckBox;
 class QLineEdit;
+class QGroupBox;
 
 struct ParticlesInfo {
 	std::vector<std::vector<cv::Point> > contours_poly;
@@ -35,7 +36,7 @@ public:
 	std::vector<QImage> 		m_images;
 	std::vector<cv::Mat> 		m_cv_images;
 	std::vector<ParticlesInfo> 	m_particleinfos;
-
+	std::vector<std::string>	m_filenames;
 
 private slots:
 	void importImages();
@@ -45,6 +46,7 @@ private slots:
 	void changeThreshold(int value);
 
 	void evaluate();
+	void saveImage();
 
 	cv::Mat		  drawImage();
 
@@ -54,12 +56,17 @@ private:
 	int			m_halfwidth;
 	int			m_halfheight;
 	int			m_radius;
+	int			m_threshold;
+
+	cv::Mat		m_frame;
 
 	QAction* m_action_import;
 
 	QLabel*  m_label_frame;
+	QLabel*	 m_label_filename;
 
 	QPushButton* m_button_import;
+	QPushButton* m_button_save;
 
 	QProgressBar* m_progress_load;
 	QSlider*	  m_slider_images;
@@ -71,6 +78,7 @@ private:
 	
 	QCheckBox*	  m_check_show_radius;
 	QCheckBox*	  m_check_show_links;
+	QCheckBox*	  m_check_show_links_selected;
 
 	QCheckBox*	  m_check_show_boundingbox;
 	QCheckBox*	  m_check_show_sphere;
@@ -80,9 +88,22 @@ private:
 	QCheckBox*	  m_check_show_sphere_next;
 	QCheckBox*	  m_check_show_polygon_next;
 
+	QLineEdit*	  m_line_date;
+	QLineEdit*	  m_line_abrasive_material;
+	QLineEdit*	  m_line_particle_size_distribution;
+	QLineEdit*	  m_line_blast_cabinet_pressure;
+	QLineEdit*	  m_line_sample_identifier;
+	QLineEdit*	  m_line_experiment_label;
+	QLineEdit*	  m_line_revolutions_per_minute;
+	QLineEdit*	  m_line_flow;
+	QLineEdit*	  m_line_particle_flow;
+
 	QLineEdit*	  m_line_scale_time;
 	QLineEdit*	  m_line_scale_distance;
 	QLineEdit*	  m_line_scale_density;
+
+	QGroupBox*	  m_groupbox_frame;
+	QGroupBox*	  m_groupbox_frame_next;
 
 	QPushButton*  m_button_export;
 	

@@ -15,6 +15,7 @@ MainWindow::MainWindow() {
 	m_widget_empty		= nullptr;
 
 	m_radius = 50;
+	m_threshold = 100;
 
 	createMenu();
 	createWidgets();
@@ -110,16 +111,23 @@ void MainWindow::createWidgetMain() {
 	m_label_radius = new QLabel(tr("50"));
 	connect(m_slider_radius, &QSlider::valueChanged, this, &MainWindow::changeRadius);
 
-	gridLayout->addWidget(m_label_frame, 1, 0, 1, 6);
-	gridLayout->addWidget(m_slider_images, 3, 0, 1, 6);
-	gridLayout->addWidget(new QLabel("threshold"), 4, 0, 1, 1);
-	gridLayout->addWidget(m_slider_threshold, 4, 1, 1, 4);
-	gridLayout->addWidget(m_label_threshold, 4, 5, 1, 1);
-	gridLayout->addWidget(new QLabel("radius"), 5, 0, 1, 1);
-	gridLayout->addWidget(m_slider_radius, 5, 1, 1, 4);
-	gridLayout->addWidget(m_label_radius, 5, 5, 1, 1);
+	m_label_filename = new QLabel("filename: ");
 
-	QGroupBox* gb2 = new QGroupBox(tr(""));
+	m_button_save = new QPushButton(tr("save"));
+	connect(m_button_save, &QPushButton::pressed, this, &MainWindow::saveImage);
+
+	gridLayout->addWidget(m_label_frame, 0, 0, 1, 10);
+	gridLayout->addWidget(m_label_filename, 1, 0, 1, 8);
+	gridLayout->addWidget(m_button_save, 1, 8, 1, 2);
+	gridLayout->addWidget(m_slider_images, 2, 0, 1, 10);
+	gridLayout->addWidget(new QLabel("threshold"), 3, 0, 1, 1);
+	gridLayout->addWidget(m_slider_threshold, 3, 1, 1, 8);
+	gridLayout->addWidget(m_label_threshold, 3, 9, 1, 1);
+	gridLayout->addWidget(new QLabel("radius"), 4, 0, 1, 1);
+	gridLayout->addWidget(m_slider_radius, 4, 1, 1, 8);
+	gridLayout->addWidget(m_label_radius, 4, 9, 1, 1);
+
+	QGroupBox* gb = new QGroupBox(tr(""));
 	QHBoxLayout* hbox2 = new QHBoxLayout;
 
 	m_check_show_radius			= new QCheckBox(tr("show radius"));
@@ -130,12 +138,16 @@ void MainWindow::createWidgetMain() {
 	m_check_show_links->setChecked(true);
 	connect(m_check_show_links,	&QCheckBox::stateChanged, this, &MainWindow::drawImage);
 
+	m_check_show_links_selected	= new QCheckBox(tr("selected links"));
+	connect(m_check_show_links_selected, &QCheckBox::stateChanged, this, &MainWindow::drawImage);
+
 	hbox2->addWidget(m_check_show_radius);
 	hbox2->addWidget(m_check_show_links);
-	gb2->setLayout(hbox2);
-	gridLayout->addWidget(gb2, 6, 0, 1, 6);
+	hbox2->addWidget(m_check_show_links_selected);
+	gb->setLayout(hbox2);
+	gridLayout->addWidget(gb, 5, 0, 1, 10);
 
-	QGroupBox *groupBox = new QGroupBox(tr("this frame"));
+	m_groupbox_frame = new QGroupBox(tr("this frame"));
 
 	m_check_show_boundingbox 	= new QCheckBox(tr("show bounding box"));
 	m_check_show_sphere 		= new QCheckBox(tr("show sphere"));
@@ -155,11 +167,11 @@ void MainWindow::createWidgetMain() {
   	vbox->addWidget(m_check_show_polygon);
 	
 	//vbox->addStretch(1);
-	groupBox->setLayout(vbox);
-	gridLayout->addWidget(groupBox, 7, 0, 1, 3);
+	m_groupbox_frame->setLayout(vbox);
+	gridLayout->addWidget(m_groupbox_frame, 6, 0, 1, 5);
 
 
-	QGroupBox *groupBoxN = new QGroupBox(tr("next frame"));
+	m_groupbox_frame_next = new QGroupBox(tr("next frame"));
 
 	m_check_show_boundingbox_next 	= new QCheckBox(tr("show bounding box"));
 	m_check_show_sphere_next 		= new QCheckBox(tr("show sphere"));
@@ -178,28 +190,57 @@ void MainWindow::createWidgetMain() {
 	vboxN->addWidget(m_check_show_sphere_next);
 	vboxN->addWidget(m_check_show_polygon_next);
 	//vboxN->addStretch(1);
-	groupBoxN->setLayout(vboxN);
-	gridLayout->addWidget(groupBoxN, 7, 3, 1, 3 );
+	m_groupbox_frame_next->setLayout(vboxN);
+	gridLayout->addWidget(m_groupbox_frame_next, 6, 5, 1, 5 );
 
-	QGroupBox*	gb = new QGroupBox(tr("scale factors"));
-	QHBoxLayout* hbox = new QHBoxLayout;
+	QGroupBox* gb2 = new QGroupBox(tr("infos"));
+	QFormLayout* fl2 = new QFormLayout;
+
+	m_line_date 			 			= new QLineEdit("");
+	m_line_abrasive_material 			= new QLineEdit("");
+	m_line_particle_size_distribution 	= new QLineEdit("");
+	m_line_blast_cabinet_pressure 		= new QLineEdit("");
+	m_line_sample_identifier 			= new QLineEdit("");
+	m_line_experiment_label 			= new QLineEdit("");
+	m_line_revolutions_per_minute 		= new QLineEdit("");
+	m_line_flow 						= new QLineEdit("");
+	m_line_particle_flow 				= new QLineEdit("");
+
+	fl2->addRow(new QLabel("date"), m_line_date);
+	fl2->addRow(new QLabel("abrasive material"), m_line_abrasive_material);
+	fl2->addRow(new QLabel("particle size distribution"), m_line_particle_size_distribution);
+	fl2->addRow(new QLabel("blast cabinet pressure [bar]"), m_line_blast_cabinet_pressure);
+	fl2->addRow(new QLabel("sample identifier"), m_line_sample_identifier);
+	fl2->addRow(new QLabel("experiment label"), m_line_experiment_label);
+	fl2->addRow(new QLabel("revolutions per minute [U/min]"), m_line_revolutions_per_minute);
+	fl2->addRow(new QLabel("flow [l/min]"), m_line_flow);
+	fl2->addRow(new QLabel("particle flow [g/min]"), m_line_particle_flow);
+
+	gb2->setLayout(fl2);
+	gridLayout->addWidget(gb2, 0, 11, 1, 1);
+
+	QGroupBox*	gb3 = new QGroupBox(tr("scale factors"));
+	QFormLayout* fl3 = new QFormLayout;
 
 	m_line_scale_time		= new QLineEdit("1.0");
 	m_line_scale_distance	= new QLineEdit("1.0");
 	m_line_scale_density	= new QLineEdit("1.0");
 	m_button_export			= new QPushButton(tr("export"));
+	m_button_export->setMinimumWidth(500);
 	connect(m_button_export, &QPushButton::pressed, this, &MainWindow::evaluate);
 
-	hbox->addWidget(new QLabel("time"));
-	hbox->addWidget(m_line_scale_time);
-	hbox->addWidget(new QLabel("distance"));
-	hbox->addWidget(m_line_scale_distance);
-	hbox->addWidget(new QLabel("density"));
-	hbox->addWidget(m_line_scale_density);
-	hbox->addWidget(m_button_export);
+	fl3->addRow(new QLabel("time [\u00B5s]"), m_line_scale_time);
+	fl3->addRow(new QLabel("distance [\u00B5m/pixel]"), m_line_scale_distance);
+	fl3->addRow(new QLabel("density [g/cm\u00B3]"), m_line_scale_density);
+	fl3->addRow(new QLabel(""));
+	fl3->addRow(new QLabel(""));
+	fl3->addRow(new QLabel(""));
+	fl3->addRow(new QLabel(""));
+	fl3->addRow(new QLabel(""));
+	fl3->addRow(m_button_export);
 
-	gb->setLayout(hbox);
-	gridLayout->addWidget(gb, 8, 0, 1, 6);
+	gb3->setLayout(fl3);
+	gridLayout->addWidget(gb3, 1, 11, 6, 1);
 
 	m_widget_main->setLayout(gridLayout);
 	m_widget_stacked->addWidget(m_widget_main);
@@ -210,6 +251,7 @@ void MainWindow::importImages() {
 	m_images.clear();
 	m_cv_images.clear();
 	m_particleinfos.clear();
+	m_filenames.clear();
 	if( !filenames.isEmpty() ) {
 		m_widget_stacked->setCurrentIndex(KN_WIDGET_LOAD);
 		this->repaint();	
@@ -221,7 +263,12 @@ void MainWindow::importImages() {
 		m_images.resize(filenames.count());
 		m_cv_images.resize(filenames.count());
 		m_particleinfos.resize(filenames.count());
+		m_filenames.resize(filenames.count());
 		for(int i = 0; i < filenames.count(); i++) {
+			string filename = filenames.at(i).toStdString();
+			size_t found = filename.find_last_of("/\\");
+			m_filenames[i] = filename.substr(found+1);
+
 			m_progress_load->setValue(i);
 			
 			Mat src = imread(filenames.at(i).toStdString(), 1);
@@ -241,6 +288,9 @@ void MainWindow::importImages() {
 		m_slider_images->setValue(0);
 		m_index = 0;
 		m_slider_radius->setValue(m_radius);
+		m_label_filename->setText(QString("filename " + QString::fromStdString(m_filenames[m_index])));
+		m_groupbox_frame->setTitle(QString("this frame " + QString::fromStdString(m_filenames[m_index])));
+		m_groupbox_frame_next->setTitle(QString("next frame " + QString::fromStdString(m_filenames[m_index+1])));
 
 
 		m_label_frame->setMinimumSize(m_halfwidth, m_halfheight);
@@ -262,12 +312,8 @@ void MainWindow::importImages() {
 }
 
 void MainWindow::changeThreshold(int value) {
+	m_threshold = value;
 	m_label_threshold->setText(QString::number(value));
-	
-	for(int i = 0; i < m_cv_images.size(); ++i) {
-		m_particleinfos[i] = getParticles(m_cv_images[i], value);
-	}
-
 	drawImage();
 }
 
@@ -279,15 +325,39 @@ void MainWindow::changeRadius(int value) {
 
 void MainWindow::changeImage(int value) {
 	m_index	= value;
+	m_label_filename->setText(QString("filename: " + QString::fromStdString(m_filenames[m_index])));
+	m_groupbox_frame->setTitle(QString("this frame " + QString::fromStdString(m_filenames[m_index])));
+	if(m_index+1 < m_filenames.size()) 
+		m_groupbox_frame_next->setTitle(QString("next frame " + QString::fromStdString(m_filenames[m_index+1])));
+
 	drawImage();
 }
 
+void MainWindow::saveImage() {
+	QString filename = QFileDialog::getSaveFileName(this,tr("BMP files"),QDir::currentPath(),tr("BMP files (*.bmp);;All files (*.*)") );
+
+	imwrite(filename.toStdString(), m_frame);
+}
+
 void MainWindow::evaluate() {
+	for(int i = 0; i < m_cv_images.size(); ++i) {
+		m_particleinfos[i] = getParticles(m_cv_images[i], m_threshold);
+	}
+
 	QString filename = QFileDialog::getSaveFileName(this,tr("CSV files"),QDir::currentPath(),tr("CSV files (*.csv);;All files (*.*)") );
-	
 	ofstream file;
   	file.open(filename.toStdString());
-	file<<"id,radius,volume,density,mass,velocity,E_kin\n";
+	file<<"date"<<","<<m_line_date->text().toStdString()<<"\n";
+	file<<"abrasive material"<<","<<m_line_abrasive_material->text().toStdString()<<"\n";
+	file<<"blast cabinet pressure [bar]"<<","<<m_line_blast_cabinet_pressure->text().toStdString()<<"\n";
+	file<<"sample identifier"<<","<<m_line_sample_identifier->text().toStdString()<<"\n";
+	file<<"experiment label"<<","<<m_line_experiment_label->text().toStdString()<<"\n";
+	file<<"revolutions per minute [U/min]"<<","<<m_line_revolutions_per_minute->text().toStdString()<<"\n";
+	file<<"flow [l/min]"<<","<<m_line_flow->text().toStdString()<<"\n";
+	file<<"particle flow [g/min]"<<","<<m_line_particle_flow->text().toStdString()<<"\n";
+	file<<"threshold"<<","<<m_threshold<<"\n";
+	file<<"radius"<<","<<m_radius<<"\n\n";
+	file<<"id,radius [\u00B5m],volume [\u00B5m\u00B3],density,mass [\u00B5g],velocity [m/s],E_kin[\u00B5J],score,file1,file2\n";
 
 	int size 				= m_cv_images.size() - 1;
 	int cnt					= 0;
@@ -301,8 +371,10 @@ void MainWindow::evaluate() {
 	double	distance		= 0.0;
 	double	velocity		= 0.0;
 	double	E_kin			= 0.0;
+	double	score			= 0.0;
 	for(int i = 0; i < size; ++i) {
-		if(calcFriends(i, i+1) > 5.0) {
+		score = calcFriends(i, i+1);
+		if(score > 5.0) {
 			ParticlesInfo& pinfo 	  = m_particleinfos[i];
 			ParticlesInfo& pinfo_next = m_particleinfos[i+1];
 
@@ -321,7 +393,7 @@ void MainWindow::evaluate() {
 					if(pinfo.center[a].x > pinfo_next.center[pinfo.friends[a][0].first].x)
 						E_kin *= -1;
 				
-					file<< cnt <<","<< mean_radius <<","<< volume <<","<< density <<","<< mass << "," << velocity << "," << E_kin <<"\n";
+					file<< cnt <<","<< mean_radius <<","<< volume <<","<< density <<","<< mass << "," << velocity << "," << E_kin << "," << score << "," << m_filenames[i] << "," << m_filenames[i+1] <<"\n";
 					cnt++;
 				}
 			}
@@ -345,7 +417,7 @@ double MainWindow::calcFriends(int a, int b) {
 				Mat I  = m_cv_images[b](pinfo_next.boundRect[j]);
 				Mat I2;
 				cv::resize(I, I2, I1.size());
-				double scale = exp(-pow((double)(pinfo.radius[i] - pinfo_next.radius[j]), 2.0));
+				double scale = exp(-pow((double)(pinfo.radius[i] - pinfo_next.radius[j]), 4.0));
 				double score = scale*getPSNR(I1, I2);
 				
 				friends_list.push_back(make_pair(j, score));
@@ -383,8 +455,13 @@ double MainWindow::calcFriends(int a, int b) {
 
 Mat MainWindow::drawImage() {
 	Mat drawing;
+
 	if(m_index < (m_particleinfos.size()-1) ) {
 		cvtColor( m_cv_images[m_index], drawing, CV_GRAY2BGR );
+
+		m_particleinfos[m_index] 	= getParticles(m_cv_images[m_index], m_threshold);
+		m_particleinfos[m_index+1] 	= getParticles(m_cv_images[m_index+1], m_threshold);
+
 		ParticlesInfo* pinfo = &m_particleinfos[m_index];
 		ParticlesInfo* pinfo_next= &m_particleinfos[m_index+1];
 		
@@ -413,18 +490,18 @@ Mat MainWindow::drawImage() {
 		if(m_check_show_links->isChecked()) {
 			for(int i = 1; i < pinfo->friends.size(); ++i) {
 				for(int j = 0; j < pinfo->friends[i].size(); ++j) {
-					if(pinfo->friends[i][j].second < 10.0) {
-						line(drawing, pinfo->center[i], pinfo_next->center[pinfo->friends[i][j].first], Scalar(255, 0, 0), 2, 8, 0);
-					}
-					else if(pinfo->friends[i][j].second < 20.0) {
-						line(drawing, pinfo->center[i], pinfo_next->center[pinfo->friends[i][j].first], Scalar(255, 255, 0), 2, 8, 0);
+					if(m_check_show_links_selected->isChecked() && j == 0) {
+						line(drawing, pinfo->center[i], pinfo_next->center[pinfo->friends[i][j].first], Scalar(255, 255, 255), 4, 8, 0);
 					} else {
-						line(drawing, pinfo->center[i], pinfo_next->center[pinfo->friends[i][j].first], Scalar(0, 255, 0), 2, 8, 0);
+						if(pinfo->friends[i][j].second < 10.0) line(drawing, pinfo->center[i], pinfo_next->center[pinfo->friends[i][j].first], Scalar(255, 0, 0), 2, 8, 0);
+						else if(pinfo->friends[i][j].second < 20.0) line(drawing, pinfo->center[i], pinfo_next->center[pinfo->friends[i][j].first], Scalar(255, 255, 0), 2, 8, 0);
+						else line(drawing, pinfo->center[i], pinfo_next->center[pinfo->friends[i][j].first], Scalar(0, 255, 0), 2, 8, 0);
 					}
 				}
 			}
 		}
-
+		
+		cvtColor(drawing, m_frame, CV_BGR2RGB);
 		m_label_frame->setPixmap(QPixmap::fromImage(mat_to_qimage_ref(drawing, QImage::Format_RGB888).scaled(m_halfwidth, m_halfheight)));
 	}
 
