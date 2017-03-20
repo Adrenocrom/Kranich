@@ -29,6 +29,7 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLineEdit>
+#include <QDate>
 
 // CV
 #include <opencv.hpp>

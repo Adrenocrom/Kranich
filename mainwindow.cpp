@@ -292,6 +292,8 @@ void MainWindow::importImages() {
 		m_groupbox_frame->setTitle(QString("this frame " + QString::fromStdString(m_filenames[m_index])));
 		m_groupbox_frame_next->setTitle(QString("next frame " + QString::fromStdString(m_filenames[m_index+1])));
 
+		m_line_date->setText( QDateTime::currentDateTime().toString() );
+
 
 		m_label_frame->setMinimumSize(m_halfwidth, m_halfheight);
 		m_label_frame->setMaximumSize(m_halfwidth, m_halfheight);
@@ -327,7 +329,7 @@ void MainWindow::changeImage(int value) {
 	m_index	= value;
 	m_label_filename->setText(QString("filename: " + QString::fromStdString(m_filenames[m_index])));
 	m_groupbox_frame->setTitle(QString("this frame " + QString::fromStdString(m_filenames[m_index])));
-	if(m_index+1 < m_filenames.size()) 
+	if(m_index+1 < (int)(m_filenames.size()) )
 		m_groupbox_frame_next->setTitle(QString("next frame " + QString::fromStdString(m_filenames[m_index+1])));
 
 	drawImage();
@@ -335,16 +337,18 @@ void MainWindow::changeImage(int value) {
 
 void MainWindow::saveImage() {
 	QString filename = QFileDialog::getSaveFileName(this,tr("BMP files"),QDir::currentPath(),tr("BMP files (*.bmp);;All files (*.*)") );
-
-	imwrite(filename.toStdString(), m_frame);
+	if(filename.toStdString() != "")
+		imwrite(filename.toStdString(), m_frame);
 }
 
 void MainWindow::evaluate() {
-	for(int i = 0; i < m_cv_images.size(); ++i) {
+	int _size = (int) m_cv_images.size();
+	for(int i = 0; i < _size; ++i) {
 		m_particleinfos[i] = getParticles(m_cv_images[i], m_threshold);
 	}
 
 	QString filename = QFileDialog::getSaveFileName(this,tr("CSV files"),QDir::currentPath(),tr("CSV files (*.csv);;All files (*.*)") );
+	if(filename == "") return;
 	ofstream file;
   	file.open(filename.toStdString());
 	file<<"date"<<","<<m_line_date->text().toStdString()<<"\n";
@@ -372,13 +376,15 @@ void MainWindow::evaluate() {
 	double	velocity		= 0.0;
 	double	E_kin			= 0.0;
 	double	score			= 0.0;
+	int 	_size_a			= 0;
 	for(int i = 0; i < size; ++i) {
 		score = calcFriends(i, i+1);
 		if(score > 5.0) {
 			ParticlesInfo& pinfo 	  = m_particleinfos[i];
 			ParticlesInfo& pinfo_next = m_particleinfos[i+1];
 
-			for(int a = 0; a < pinfo.radius.size(); ++a) {
+			_size_a = (int) pinfo.radius.size();
+			for(int a = 0; a < _size_a; ++a) {
 				if(pinfo.friends[a].size() > 0) {
 					mean_radius = ((double) pinfo.radius[a] + (double) pinfo_next.radius[pinfo.friends[a][0].first]) / 2.0;
 					mean_radius *= scale_distance;
@@ -391,7 +397,7 @@ void MainWindow::evaluate() {
 					velocity = distance / scale_time;
 					mass  *= 1e-3;
 					E_kin	 = 0.5 * mass * pow(velocity, 2.0);
-					mass  *= 1e-9;
+					mass  *= 1e+9;
 					if(pinfo.center[a].x > pinfo_next.center[pinfo.friends[a][0].first].x)
 						E_kin *= -1;
 				
@@ -407,11 +413,13 @@ double MainWindow::calcFriends(int a, int b) {
 	ParticlesInfo& pinfo 		= m_particleinfos[a];
 	ParticlesInfo& pinfo_next 	= m_particleinfos[b];
 	pinfo.friends.resize(pinfo.radius.size());
+	int _size_a = (int) pinfo.radius.size();
+	int _size_b = (int) pinfo_next.radius.size();
 
-	for(int i = 1; i < pinfo.radius.size(); ++i) {
+	for(int i = 1; i < _size_a; ++i) {
 		list<pair<int, double> > friends_list;
 
-		for(int j = 1; j < pinfo_next.radius.size(); ++j) {
+		for(int j = 1; j < _size_b; ++j) {
 			Point2f p = pinfo.center[i] - pinfo_next.center[j];
 
 			if(norm(p) < (double)m_radius) {
@@ -438,7 +446,7 @@ double MainWindow::calcFriends(int a, int b) {
 
 	// calc global score
 	double global_score = 0.0;
-	for(int i = 1; i < pinfo.radius.size(); ++i) {
+	for(int i = 1; i < _size_a; ++i) {
 		if(pinfo.friends[i].size() > 0) {
 			global_score += pinfo.friends[i][0].second;
 		} else {
@@ -458,7 +466,7 @@ double MainWindow::calcFriends(int a, int b) {
 Mat MainWindow::drawImage() {
 	Mat drawing;
 
-	if(m_index < (m_particleinfos.size()-1) ) {
+	if(m_index < (int)(m_particleinfos.size()-1) ) {
 		cvtColor( m_cv_images[m_index], drawing, CV_GRAY2BGR );
 
 		m_particleinfos[m_index] 	= getParticles(m_cv_images[m_index], m_threshold);
@@ -466,32 +474,34 @@ Mat MainWindow::drawImage() {
 
 		ParticlesInfo* pinfo = &m_particleinfos[m_index];
 		ParticlesInfo* pinfo_next= &m_particleinfos[m_index+1];
+		int _size_a = (int) pinfo->radius.size();
+		int _size_b = (int) pinfo_next->radius.size();
 		
-		for(int i = 1; i < pinfo->radius.size(); i++) {
+		for(int i = 1; i < _size_a; i++) {
 			Scalar color = Scalar(0, 0, 255);// rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
     		if(m_check_show_polygon->isChecked()) 		drawContours(drawing, pinfo->contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
     		if(m_check_show_boundingbox->isChecked()) 	rectangle(drawing, pinfo->boundRect[i].tl(), pinfo->boundRect[i].br(), color, 2, 8, 0 );
     		if(m_check_show_sphere->isChecked()) 		circle(drawing, pinfo->center[i], (int)pinfo->radius[i], color, 2, 8, 0 );
 		}
 
-		for(int i = 1; i < pinfo_next->radius.size(); i++) {
+		for(int i = 1; i < _size_b; i++) {
 			Scalar color = Scalar( 0, 255, 255);//rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
     		if(m_check_show_polygon_next->isChecked())		drawContours(drawing, pinfo_next->contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
     		if(m_check_show_boundingbox_next->isChecked())	rectangle(drawing, pinfo_next->boundRect[i].tl(), pinfo_next->boundRect[i].br(), color, 2, 8, 0 );
     		if(m_check_show_sphere_next->isChecked())		circle(drawing, pinfo_next->center[i], (int)pinfo_next->radius[i], color, 2, 8, 0 );
 		}
 
-	
 		if(m_check_show_radius->isChecked()) {
-			for(int i = 1; i < pinfo->radius.size(); i++) {
+			for(int i = 1; i < _size_a; i++) {
     			circle(drawing, pinfo->center[i], m_radius, Scalar(255, 255, 255) , 2, 8, 0 );
 			}
 		}
 		calcFriends(m_index, m_index+1);
 
 		if(m_check_show_links->isChecked()) {
-			for(int i = 1; i < pinfo->friends.size(); ++i) {
-				for(int j = 0; j < pinfo->friends[i].size(); ++j) {
+			int _size_f = pinfo->friends.size();
+			for(int i = 1; i < _size_f; ++i) {
+				for(int j = 0; j < (int) pinfo->friends[i].size(); ++j) {
 					if(m_check_show_links_selected->isChecked() && j == 0) {
 						line(drawing, pinfo->center[i], pinfo_next->center[pinfo->friends[i][j].first], Scalar(255, 255, 255), 4, 8, 0);
 					} else {
