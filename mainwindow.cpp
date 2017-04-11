@@ -248,7 +248,6 @@ void MainWindow::createWidgetMain() {
 
 void MainWindow::importImages() {
 	QStringList filenames = QFileDialog::getOpenFileNames(this,tr("BMP files"),QDir::currentPath(),tr("Bitmap files (*.bmp);;All files (*.*)") );
-	m_images.clear();
 	m_cv_images.clear();
 	m_particleinfos.clear();
 	m_filenames.clear();
@@ -260,7 +259,6 @@ void MainWindow::importImages() {
 
 		filenames.sort();
 	
-		m_images.resize(filenames.count());
 		m_cv_images.resize(filenames.count());
 		m_particleinfos.resize(filenames.count());
 		m_filenames.resize(filenames.count());
@@ -272,12 +270,13 @@ void MainWindow::importImages() {
 			m_progress_load->setValue(i);
 			
 			Mat src = imread(filenames.at(i).toStdString(), 1);
-
+			//Mat _dest;
+			//src.convertTo(_dest, CV_8U);
 			cvtColor( src, m_cv_images[i], CV_BGR2GRAY );
    			blur( m_cv_images[i], m_cv_images[i], Size(3,3) );
 
-			m_images[i]	= mat_to_qimage_cpy(src, QImage::Format_RGB888);
-			m_particleinfos[i] = getParticles(m_cv_images[i]);
+			m_particleinfos[i] = new ParticlesInfo;
+			getParticles(m_cv_images[i], m_particleinfos[i]);
 		}
 		
 
@@ -344,7 +343,7 @@ void MainWindow::saveImage() {
 void MainWindow::evaluate() {
 	int _size = (int) m_cv_images.size();
 	for(int i = 0; i < _size; ++i) {
-		m_particleinfos[i] = getParticles(m_cv_images[i], m_threshold);
+		getParticles(m_cv_images[i], m_particleinfos[i], m_threshold);
 	}
 
 	QString filename = QFileDialog::getSaveFileName(this,tr("CSV files"),QDir::currentPath(),tr("CSV files (*.csv);;All files (*.*)") );
@@ -380,25 +379,25 @@ void MainWindow::evaluate() {
 	for(int i = 0; i < size; ++i) {
 		score = calcFriends(i, i+1);
 		if(score > 5.0) {
-			ParticlesInfo& pinfo 	  = m_particleinfos[i];
-			ParticlesInfo& pinfo_next = m_particleinfos[i+1];
+			ParticlesInfo* pinfo 	  = m_particleinfos[i];
+			ParticlesInfo* pinfo_next = m_particleinfos[i+1];
 
-			_size_a = (int) pinfo.radius.size();
+			_size_a = (int) pinfo->radius.size();
 			for(int a = 0; a < _size_a; ++a) {
-				if(pinfo.friends[a].size() > 0) {
-					mean_radius = ((double) pinfo.radius[a] + (double) pinfo_next.radius[pinfo.friends[a][0].first]) / 2.0;
+				if(pinfo->friends[a].size() > 0) {
+					mean_radius = ((double) pinfo->radius[a] + (double) pinfo_next->radius[pinfo->friends[a][0].first]) / 2.0;
 					mean_radius *= scale_distance;
 					volume = (4.0/3.0) * KN_PI * pow(mean_radius, 3.0);
 					density= scale_density;
 					mass   = density * (volume * 1e-12);
 
-					distance = norm(pinfo.center[a] - pinfo_next.center[pinfo.friends[a][0].first]);
+					distance = norm(pinfo->center[a] - pinfo_next->center[pinfo->friends[a][0].first]);
 					distance*= scale_distance;
 					velocity = distance / scale_time;
 					mass  *= 1e-3;
 					E_kin	 = 0.5 * mass * pow(velocity, 2.0);
 					mass  *= 1e+9;
-					if(pinfo.center[a].x > pinfo_next.center[pinfo.friends[a][0].first].x)
+					if(pinfo->center[a].x > pinfo_next->center[pinfo->friends[a][0].first].x)
 						E_kin *= -1;
 				
 					file<< cnt <<","<< mean_radius <<","<< volume <<","<< density <<","<< mass << "," << velocity << "," << E_kin << "," << score << "," << m_filenames[i] << "," << m_filenames[i+1] <<"\n";
@@ -410,24 +409,24 @@ void MainWindow::evaluate() {
 }
  
 double MainWindow::calcFriends(int a, int b) {
-	ParticlesInfo& pinfo 		= m_particleinfos[a];
-	ParticlesInfo& pinfo_next 	= m_particleinfos[b];
-	pinfo.friends.resize(pinfo.radius.size());
-	int _size_a = (int) pinfo.radius.size();
-	int _size_b = (int) pinfo_next.radius.size();
+	ParticlesInfo* pinfo 		= m_particleinfos[a];
+	ParticlesInfo* pinfo_next 	= m_particleinfos[b];
+	pinfo->friends.resize(pinfo->radius.size());
+	int _size_a = (int) pinfo->radius.size();
+	int _size_b = (int) pinfo_next->radius.size();
 
 	for(int i = 1; i < _size_a; ++i) {
 		list<pair<int, double> > friends_list;
 
 		for(int j = 1; j < _size_b; ++j) {
-			Point2f p = pinfo.center[i] - pinfo_next.center[j];
+			Point2f p = pinfo->center[i] - pinfo_next->center[j];
 
 			if(norm(p) < (double)m_radius) {
-				Mat I1 = m_cv_images[a](pinfo.boundRect[i]);
-				Mat I  = m_cv_images[b](pinfo_next.boundRect[j]);
+				Mat I1 = m_cv_images[a](pinfo->boundRect[i]);
+				Mat I  = m_cv_images[b](pinfo_next->boundRect[j]);
 				Mat I2;
 				cv::resize(I, I2, I1.size());
-				double scale = exp(-pow((double)(pinfo.radius[i] - pinfo_next.radius[j]), 4.0));
+				double scale = exp(-pow((double)(pinfo->radius[i] - pinfo_next->radius[j]), 4.0));
 				double score = scale*getPSNR(I1, I2);
 				
 				friends_list.push_back(make_pair(j, score));
@@ -441,21 +440,21 @@ double MainWindow::calcFriends(int a, int b) {
 		});
 		
 		vector<pair<int, double> > friends(friends_list.begin(), friends_list.end());
-		pinfo.friends[i] = friends;
+		pinfo->friends[i] = friends;
 	}
 
 	// calc global score
 	double global_score = 0.0;
 	for(int i = 1; i < _size_a; ++i) {
-		if(pinfo.friends[i].size() > 0) {
-			global_score += pinfo.friends[i][0].second;
+		if(pinfo->friends[i].size() > 0) {
+			global_score += pinfo->friends[i][0].second;
 		} else {
 			global_score -= 20.0;
 		}
 	}
 
-	if(pinfo.radius.size() > 1) {
-		global_score /= pinfo.radius.size();
+	if(pinfo->radius.size() > 1) {
+		global_score /= pinfo->radius.size();
 	} else {
 		global_score = -100.0;
 	}
@@ -469,11 +468,11 @@ Mat MainWindow::drawImage() {
 	if(m_index < (int)(m_particleinfos.size()-1) ) {
 		cvtColor( m_cv_images[m_index], drawing, CV_GRAY2BGR );
 
-		m_particleinfos[m_index] 	= getParticles(m_cv_images[m_index], m_threshold);
-		m_particleinfos[m_index+1] 	= getParticles(m_cv_images[m_index+1], m_threshold);
+		getParticles(m_cv_images[m_index], 	 m_particleinfos[m_index],   m_threshold);
+		getParticles(m_cv_images[m_index+1], m_particleinfos[m_index+1], m_threshold);
 
-		ParticlesInfo* pinfo = &m_particleinfos[m_index];
-		ParticlesInfo* pinfo_next= &m_particleinfos[m_index+1];
+		ParticlesInfo* pinfo 	 = m_particleinfos[m_index];
+		ParticlesInfo* pinfo_next= m_particleinfos[m_index+1];
 		int _size_a = (int) pinfo->radius.size();
 		int _size_b = (int) pinfo_next->radius.size();
 		
@@ -520,32 +519,30 @@ Mat MainWindow::drawImage() {
 	return drawing;
 }
 
-ParticlesInfo MainWindow::getParticles(const cv::Mat& in, int thresh) {
-	ParticlesInfo pinfo;
+void MainWindow::getParticles(const cv::Mat& in, ParticlesInfo* pinfo, int thresh) {
+	if(pinfo) {
+		Mat threshold_output;
+		vector<vector<Point> > contours;
+		vector<Vec4i> hierarchy;
 
-	Mat threshold_output;
-	vector<vector<Point> > contours;
-	vector<Vec4i> hierarchy;
+		/// Detect edges using Threshold
+		threshold( in, threshold_output, thresh, 255, THRESH_BINARY );
+		
+		/// Find contours
+		findContours( threshold_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
 
-  	/// Detect edges using Threshold
-	threshold( in, threshold_output, thresh, 255, THRESH_BINARY );
-	
-	/// Find contours
-	findContours( threshold_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+		/// Approximate contours to polygons + get bounding rects and circles
+		pinfo->contours_poly.resize( contours.size() );
+		pinfo->boundRect.resize( contours.size() );
+		pinfo->center.resize( contours.size() );
+		pinfo->radius.resize( contours.size() );
 
-	/// Approximate contours to polygons + get bounding rects and circles
-	pinfo.contours_poly.resize( contours.size() );
-	pinfo.boundRect.resize( contours.size() );
-	pinfo.center.resize( contours.size() );
-	pinfo.radius.resize( contours.size() );
-
-	for( unsigned int i = 0; i < contours.size(); i++ ) { 
-		approxPolyDP( Mat(contours[i]), pinfo.contours_poly[i], 3, true );
-		pinfo.boundRect[i] = boundingRect( Mat(pinfo.contours_poly[i]) );
-		minEnclosingCircle( (Mat)pinfo.contours_poly[i], pinfo.center[i], pinfo.radius[i] );
+		for( unsigned int i = 0; i < contours.size(); i++ ) { 
+			approxPolyDP( Mat(contours[i]), pinfo->contours_poly[i], 3, true );
+			pinfo->boundRect[i] = boundingRect( Mat(pinfo->contours_poly[i]) );
+			minEnclosingCircle( (Mat)pinfo->contours_poly[i], pinfo->center[i], pinfo->radius[i] );
+		}
 	}
-
-	return pinfo;
 }
 
 // calculate the ssim

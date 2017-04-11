@@ -19,10 +19,10 @@ class QLineEdit;
 class QGroupBox;
 
 struct ParticlesInfo {
-	std::vector<std::vector<cv::Point> > contours_poly;
-	std::vector<cv::Rect> 		   	boundRect;
-	std::vector<cv::Point2f>  		center;
-	std::vector<float>				radius;
+	std::vector<std::vector<cv::Point> > 				contours_poly;
+	std::vector<cv::Rect> 		   		 				boundRect;
+	std::vector<cv::Point2f>  							center;
+	std::vector<float>									radius;
 	std::vector<std::vector<std::pair<int, double> > >  friends;
 };
 
@@ -33,10 +33,9 @@ public:
 	MainWindow();
 	~MainWindow();
 
-	std::vector<QImage> 		m_images;
-	std::vector<cv::Mat> 		m_cv_images;
-	std::vector<ParticlesInfo> 	m_particleinfos;
-	std::vector<std::string>	m_filenames;
+	std::vector<cv::Mat> 			m_cv_images;
+	std::vector<ParticlesInfo*> 	m_particleinfos;
+	std::vector<std::string>		m_filenames;
 
 private slots:
 	void importImages();
@@ -60,10 +59,10 @@ private:
 
 	cv::Mat		m_frame;
 
-	QAction* m_action_import;
+	QAction* 		m_action_import;
 
-	QLabel*  m_label_frame;
-	QLabel*	 m_label_filename;
+	QLabel*  		m_label_frame;
+	QLabel*	 		m_label_filename;
 
 	QPushButton* m_button_import;
 	QPushButton* m_button_save;
@@ -121,8 +120,8 @@ private:
 	cv::Scalar getMSSIM( const cv::Mat& i1, const cv::Mat& i2);
 	double getPSNR(const cv::Mat& I1, const cv::Mat& I2);
 
-	ParticlesInfo getParticles(const cv::Mat& in, int thresh = 100);
-	double		  calcFriends(int a, int b);
+	void 		getParticles(const cv::Mat& in, ParticlesInfo* pinfo, int thresh = 100);
+	double		calcFriends(int a, int b);
 };
 
 #endif
