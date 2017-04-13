@@ -13,15 +13,19 @@ MainWindow::MainWindow() {
 	// widgets
 	m_widget_stacked 	= nullptr;
 	m_widget_empty		= nullptr;
-
-	m_radius = 50;
+	m_tableWidget_table = nullptr;
+	
+	m_active	= -1;
+	m_radius 	= 50;
 	m_threshold = 100;
+
+	m_bilateral = 3;
 
 	createMenu();
 	createWidgets();
 
-	setMinimumSize(1024, 768);
-	setMaximumSize(1024, 768);
+	setMinimumSize(1300, 768);
+	setMaximumSize(1300, 768);
 
 }
 
@@ -29,6 +33,7 @@ MainWindow::~MainWindow() {
 	SAFE_DELETE(m_label_frame);
 	SAFE_DELETE(m_widget_empty);
 	SAFE_DELETE(m_widget_stacked);
+	//SAFE_DELETE(m_tableWidget_table);
 }
 
 void MainWindow::createMenu() {
@@ -115,6 +120,7 @@ void MainWindow::createWidgetMain() {
 
 	m_button_save = new QPushButton(tr("save"));
 	connect(m_button_save, &QPushButton::pressed, this, &MainWindow::saveImage);
+
 
 	gridLayout->addWidget(m_label_frame, 0, 0, 1, 10);
 	gridLayout->addWidget(m_label_filename, 1, 0, 1, 8);
@@ -229,9 +235,9 @@ void MainWindow::createWidgetMain() {
 	m_button_export->setMinimumWidth(500);
 	connect(m_button_export, &QPushButton::pressed, this, &MainWindow::evaluate);
 
-	fl3->addRow(new QLabel("time [\u00B5s]"), m_line_scale_time);
-	fl3->addRow(new QLabel("distance [\u00B5m/pixel]"), m_line_scale_distance);
-	fl3->addRow(new QLabel("density [g/cm\u00B3]"), m_line_scale_density);
+	fl3->addRow(new QLabel("time ["+QString(QChar(0x03BC))+"s]"), m_line_scale_time);
+	fl3->addRow(new QLabel("distance ["+QString(QChar(0x03BC))+"m/pixel]"), m_line_scale_distance);
+	fl3->addRow(new QLabel("density [g/cm"+QString(QChar(0x00B3))+"]"), m_line_scale_density);
 	fl3->addRow(new QLabel(""));
 	fl3->addRow(new QLabel(""));
 	fl3->addRow(new QLabel(""));
@@ -242,6 +248,21 @@ void MainWindow::createWidgetMain() {
 	gb3->setLayout(fl3);
 	gridLayout->addWidget(gb3, 1, 11, 6, 1);
 
+	
+	m_tableWidget_table = new QTableWidget();
+	m_tableWidget_table->setColumnCount(1);
+  	m_tableWidget_table->setColumnWidth(0,  200);
+	
+	QStringList header;
+	header << "radius in px" ;
+	m_tableWidget_table->setHorizontalHeaderLabels(header);
+	m_tableWidget_table->setMinimumWidth(200);
+	//m_tableWidget_table->verticalHeader()->setVisible(false);
+	m_tableWidget_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+	connect(m_tableWidget_table, &QTableWidget::cellDoubleClicked, this, &MainWindow::setParticleActive);
+	
+	gridLayout->addWidget(m_tableWidget_table, 0, 12, 8, 1);
+
 	m_widget_main->setLayout(gridLayout);
 	m_widget_stacked->addWidget(m_widget_main);
 }
@@ -251,6 +272,7 @@ void MainWindow::importImages() {
 	m_cv_images.clear();
 	m_particleinfos.clear();
 	m_filenames.clear();
+	m_active = -1;
 	if( !filenames.isEmpty() ) {
 		m_widget_stacked->setCurrentIndex(KN_WIDGET_LOAD);
 		this->repaint();	
@@ -272,8 +294,9 @@ void MainWindow::importImages() {
 			Mat src = imread(filenames.at(i).toStdString(), 1);
 			//Mat _dest;
 			//src.convertTo(_dest, CV_8U);
-			cvtColor( src, m_cv_images[i], CV_BGR2GRAY );
-   			blur( m_cv_images[i], m_cv_images[i], Size(3,3) );
+			cvtColor( src, src, CV_BGR2GRAY );
+   			blur( src, m_cv_images[i], Size(3,3) );
+			//bilateralFilter ( src, m_cv_images[i], m_bilateral, m_bilateral*2, m_bilateral/2 );
 
 			m_particleinfos[i] = new ParticlesInfo;
 			getParticles(m_cv_images[i], m_particleinfos[i]);
@@ -312,6 +335,11 @@ void MainWindow::importImages() {
 	}
 }
 
+void MainWindow::setParticleActive(int r, int c) {
+	m_active = r+1;
+	drawImage();
+}
+
 void MainWindow::changeThreshold(int value) {
 	m_threshold = value;
 	m_label_threshold->setText(QString::number(value));
@@ -330,7 +358,7 @@ void MainWindow::changeImage(int value) {
 	m_groupbox_frame->setTitle(QString("this frame " + QString::fromStdString(m_filenames[m_index])));
 	if(m_index+1 < (int)(m_filenames.size()) )
 		m_groupbox_frame_next->setTitle(QString("next frame " + QString::fromStdString(m_filenames[m_index+1])));
-
+	m_active = -1;
 	drawImage();
 }
 
@@ -476,11 +504,18 @@ Mat MainWindow::drawImage() {
 		int _size_a = (int) pinfo->radius.size();
 		int _size_b = (int) pinfo_next->radius.size();
 		
+		if(_size_a > 1) m_tableWidget_table->setRowCount(_size_a-1);
+		else {
+			m_tableWidget_table->setRowCount(0);
+		}
+		
 		for(int i = 1; i < _size_a; i++) {
 			Scalar color = Scalar(0, 0, 255);// rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
     		if(m_check_show_polygon->isChecked()) 		drawContours(drawing, pinfo->contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
     		if(m_check_show_boundingbox->isChecked()) 	rectangle(drawing, pinfo->boundRect[i].tl(), pinfo->boundRect[i].br(), color, 2, 8, 0 );
     		if(m_check_show_sphere->isChecked()) 		circle(drawing, pinfo->center[i], (int)pinfo->radius[i], color, 2, 8, 0 );
+		
+			m_tableWidget_table->setItem(i-1, 0, new QTableWidgetItem(QString::number(pinfo->radius[i])));
 		}
 
 		for(int i = 1; i < _size_b; i++) {
@@ -495,6 +530,19 @@ Mat MainWindow::drawImage() {
     			circle(drawing, pinfo->center[i], m_radius, Scalar(255, 255, 255) , 2, 8, 0 );
 			}
 		}
+		
+		if(m_active >= _size_a) m_active = _size_a-1;
+		if(_size_a == 1) m_active = -1;
+		if(m_active > -1) {
+			Scalar color = Scalar(0, 255, 0);// rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+			if(m_check_show_radius->isChecked()) 		circle(drawing, pinfo->center[m_active], m_radius, color , 2, 8, 0 );
+    		if(m_check_show_polygon->isChecked()) 		drawContours(drawing, pinfo->contours_poly, m_active, color, 1, 8, vector<Vec4i>(), 0, Point() );
+    		if(m_check_show_boundingbox->isChecked()) 	rectangle(drawing, pinfo->boundRect[m_active].tl(), pinfo->boundRect[m_active].br(), color, 2, 8, 0 );
+    		if(m_check_show_sphere->isChecked()) 		circle(drawing, pinfo->center[m_active], (int)pinfo->radius[m_active], color, 2, 8, 0 );
+
+		}
+
+		
 		calcFriends(m_index, m_index+1);
 
 		if(m_check_show_links->isChecked()) {
@@ -527,7 +575,7 @@ void MainWindow::getParticles(const cv::Mat& in, ParticlesInfo* pinfo, int thres
 
 		/// Detect edges using Threshold
 		threshold( in, threshold_output, thresh, 255, THRESH_BINARY );
-		
+		//Canny( in, threshold_output, thresh, thresh*2, 3 );
 		/// Find contours
 		findContours( threshold_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
 

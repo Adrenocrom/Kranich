@@ -29,6 +29,8 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLineEdit>
+#include <QTableWidget>
+#include <QTableWidgetItem>
 #include <QDate>
 
 // CV

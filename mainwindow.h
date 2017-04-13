@@ -7,7 +7,7 @@
 
 #include <opencv.hpp>
 
-#include "image.h"
+//#include "image.h"
 
 class QLabel;
 class QSlider;
@@ -17,6 +17,7 @@ class QStackedWidget;
 class QCheckBox;
 class QLineEdit;
 class QGroupBox;
+class QTableWidget;
 
 struct ParticlesInfo {
 	std::vector<std::vector<cv::Point> > 				contours_poly;
@@ -43,6 +44,7 @@ private slots:
 	void changeImage(int value);
 	void changeRadius(int value);
 	void changeThreshold(int value);
+	void setParticleActive(int r, int c);
 
 	void evaluate();
 	void saveImage();
@@ -56,8 +58,10 @@ private:
 	int			m_halfheight;
 	int			m_radius;
 	int			m_threshold;
+	int			m_bilateral;
+	int			m_active;
 
-	cv::Mat		m_frame;
+	cv::Mat			m_frame;
 
 	QAction* 		m_action_import;
 
@@ -105,6 +109,9 @@ private:
 	QGroupBox*	  m_groupbox_frame_next;
 
 	QPushButton*  m_button_export;
+
+	QTableWidget* m_tableWidget_table;
+
 	
 	void createMenu();
 	void createWidgets();
