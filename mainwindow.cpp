@@ -45,9 +45,9 @@ void MainWindow::createMenu() {
 
 	connect(m_action_import, &QAction::triggered, this, &MainWindow::importImages);
 
-	QAction* action_quit = menu_file->addAction(tr("&Quit"), this, &QWidget::close);
-   	action_quit->setShortcuts(QKeySequence::Quit);
-	action_quit->setStatusTip(tr("Quit the application"));
+	//QAction* action_quit = menu_file->addAction(tr("&Quit"), this, &QWidget::close);
+   	//action_quit->setShortcuts(QKeySequence::Quit);
+	//action_quit->setStatusTip(tr("Quit the application"));
 }
 
 void MainWindow::createWidgets() {

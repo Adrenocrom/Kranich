@@ -3,7 +3,7 @@ QT += core gui widgets
 TARGET = kranich
 TEMPLATE = app
 
-QMAKE_CXXFLAGS += -fopenmp
+QMAKE_CXXFLAGS += -fopenmp -std=c++11
 
 SOURCES +=	main.cpp \
 			kranich.cpp \
