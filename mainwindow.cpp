@@ -419,11 +419,13 @@ void MainWindow::evaluate() {
 					density= scale_density;
 					mass   = density * (volume * 1e-12);
 
-					distance = norm(pinfo->center[a] - pinfo_next->center[pinfo->friends[a][0].first]);
+					//distance = norm((pinfo->center[a] * scale_distance)  - (pinfo_next->center[pinfo->friends[a][0].first] * scale_distance));
+					distance = norm(pinfo->center[a]  - pinfo_next->center[pinfo->friends[a][0].first]);
 					distance*= scale_distance;
 					velocity = distance / scale_time;
 					mass  *= 1e-3;
-					E_kin	 = 0.5 * mass * pow(velocity, 2.0);
+					E_kin  = 0.5 * mass * pow(velocity, 2.0);
+					E_kin *= 1e+6; 
 					mass  *= 1e+9;
 					if(pinfo->center[a].x > pinfo_next->center[pinfo->friends[a][0].first].x)
 						E_kin *= -1;
@@ -574,7 +576,9 @@ void MainWindow::getParticles(const cv::Mat& in, ParticlesInfo* pinfo, int thres
 		vector<Vec4i> hierarchy;
 
 		/// Detect edges using Threshold
-		threshold( in, threshold_output, thresh, 255, THRESH_BINARY );
+		//threshold( in, threshold_output, thresh, 255, THRESH_BINARY );
+
+		adaptiveThreshold(in, threshold_output, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 151, thresh);
 		//Canny( in, threshold_output, thresh, thresh*2, 3 );
 		/// Find contours
 		findContours( threshold_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );

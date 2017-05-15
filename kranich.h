@@ -9,6 +9,7 @@
 #include <vector>
 #include <list>
 #include <fstream>
+#include <locale>
 
 // QT
 #include <QApplication>
