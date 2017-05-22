@@ -376,6 +376,12 @@ void MainWindow::evaluate() {
 
 	QString filename = QFileDialog::getSaveFileName(this,tr("CSV files"),QDir::currentPath(),tr("CSV files (*.csv);;All files (*.*)") );
 	if(filename == "") return;
+
+	double	scale_time		= m_line_scale_time->text().toDouble();
+	double	scale_distance	= m_line_scale_distance->text().toDouble();
+	double	scale_density	= m_line_scale_density->text().toDouble();
+
+
 	ofstream file;
   	file.open(filename.toStdString());
 	file<<"date"<<","<<m_line_date->text().toStdString()<<"\n";
@@ -387,14 +393,13 @@ void MainWindow::evaluate() {
 	file<<"flow [l/min]"<<","<<m_line_flow->text().toStdString()<<"\n";
 	file<<"particle flow [g/min]"<<","<<m_line_particle_flow->text().toStdString()<<"\n";
 	file<<"threshold"<<","<<m_threshold<<"\n";
-	file<<"radius"<<","<<m_radius<<"\n\n";
+	file<<"radius"<<","<<m_radius<<"\n";
+	file<<"scale distance [\u00B5m/px]"<<","<<scale_distance<<"\n";
+	file<<"scale time [\u00B5s]"<<","<<scale_time<<"\n\n";
 	file<<"id,radius [\u00B5m],volume [\u00B5m\u00B3],density [g/cm\u00B3],mass [\u00B5g],velocity [m/s],E_kin[\u00B5J],score,file1,file2\n";
 
 	int size 				= m_cv_images.size() - 1;
 	int cnt					= 0;
-	double	scale_time		= m_line_scale_time->text().toDouble();
-	double	scale_distance	= m_line_scale_distance->text().toDouble();
-	double	scale_density	= m_line_scale_density->text().toDouble();
 	double	mean_radius		= 0.0;
 	double	volume			= 0.0;
 	double  density			= 0.0;
