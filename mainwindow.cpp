@@ -111,16 +111,15 @@ void MainWindow::createWidgetMain() {
 	connect(m_slider_threshold, &QSlider::valueChanged, this, &MainWindow::changeThreshold);
 	m_label_threshold = new QLabel(tr("100"));
 
-	m_slider_radius = new QSlider(Qt::Horizontal);
-	m_slider_radius->setRange(0, 500);
-	m_label_radius = new QLabel(tr("50"));
-	connect(m_slider_radius, &QSlider::valueChanged, this, &MainWindow::changeRadius);
+
+	m_line_min_speed = new QLineEdit("0.0");
+	m_line_max_speed = new QLineEdit("200.0");
+	connect(m_line_max_speed, &QLineEdit::textChanged, this, &MainWindow::changeRadius);
 
 	m_label_filename = new QLabel("filename: ");
 
 	m_button_save = new QPushButton(tr("save"));
 	connect(m_button_save, &QPushButton::pressed, this, &MainWindow::saveImage);
-
 
 	gridLayout->addWidget(m_label_frame, 0, 0, 1, 10);
 	gridLayout->addWidget(m_label_filename, 1, 0, 1, 8);
@@ -129,18 +128,19 @@ void MainWindow::createWidgetMain() {
 	gridLayout->addWidget(new QLabel("threshold"), 3, 0, 1, 1);
 	gridLayout->addWidget(m_slider_threshold, 3, 1, 1, 8);
 	gridLayout->addWidget(m_label_threshold, 3, 9, 1, 1);
-	gridLayout->addWidget(new QLabel("radius"), 4, 0, 1, 1);
-	gridLayout->addWidget(m_slider_radius, 4, 1, 1, 8);
-	gridLayout->addWidget(m_label_radius, 4, 9, 1, 1);
+	gridLayout->addWidget(new QLabel("min speed [m/s]"), 4, 0, 1, 1);
+	gridLayout->addWidget(m_line_min_speed, 4, 1, 1, 1);
+	gridLayout->addWidget(new QLabel("max speed [m/s]"), 4, 4, 1, 1);
+	gridLayout->addWidget(m_line_max_speed, 4, 5, 1, 1);
 
 	QGroupBox* gb = new QGroupBox(tr(""));
 	QHBoxLayout* hbox2 = new QHBoxLayout;
 
 	m_check_show_radius			= new QCheckBox(tr("show radius"));
 	m_check_show_radius->setChecked(true);
-	connect(m_check_show_radius,	  &QCheckBox::stateChanged, this, &MainWindow::drawImage);
+	connect(m_check_show_radius, &QCheckBox::stateChanged, this, &MainWindow::drawImage);
 	
-	m_check_show_links			= new QCheckBox(tr("show links"));
+	m_check_show_links = new QCheckBox(tr("show links"));
 	m_check_show_links->setChecked(true);
 	connect(m_check_show_links,	&QCheckBox::stateChanged, this, &MainWindow::drawImage);
 
@@ -234,6 +234,8 @@ void MainWindow::createWidgetMain() {
 	m_button_export			= new QPushButton(tr("export"));
 	m_button_export->setMinimumWidth(500);
 	connect(m_button_export, &QPushButton::pressed, this, &MainWindow::evaluate);
+	connect(m_line_scale_distance, &QLineEdit::textChanged, this, &MainWindow::changeRadius);
+	connect(m_line_scale_time, &QLineEdit::textChanged, this, &MainWindow::changeRadius);
 
 	fl3->addRow(new QLabel("time ["+QString(QChar(0x03BC))+"s]"), m_line_scale_time);
 	fl3->addRow(new QLabel("distance ["+QString(QChar(0x03BC))+"m/pixel]"), m_line_scale_distance);
@@ -309,7 +311,8 @@ void MainWindow::importImages() {
 		m_slider_images->setMaximum(filenames.count()-1);
 		m_slider_images->setValue(0);
 		m_index = 0;
-		m_slider_radius->setValue(m_radius);
+		m_line_min_speed->setText("0.0");
+		m_line_max_speed->setText("200.0");
 		m_label_filename->setText(QString("filename " + QString::fromStdString(m_filenames[m_index])));
 		m_groupbox_frame->setTitle(QString("this frame " + QString::fromStdString(m_filenames[m_index])));
 		m_groupbox_frame_next->setTitle(QString("next frame " + QString::fromStdString(m_filenames[m_index+1])));
@@ -346,9 +349,13 @@ void MainWindow::changeThreshold(int value) {
 	drawImage();
 }
 
-void MainWindow::changeRadius(int value) {
-	m_radius = value;
-	m_label_radius->setText(QString::number(value));
+void MainWindow::changeRadius(QString value) {
+	double speed = m_line_max_speed->text().toDouble();
+	double scale = m_line_scale_distance->text().toDouble();
+	if(scale > 0.0)
+		speed *= m_line_scale_time->text().toDouble() / scale;
+	
+	m_radius = (int)speed;
 	drawImage();
 }
 
@@ -395,7 +402,9 @@ void MainWindow::evaluate() {
 	file<<"threshold"<<","<<m_threshold<<"\n";
 	file<<"radius"<<","<<m_radius<<"\n";
 	file<<"scale distance [\u00B5m/px]"<<","<<scale_distance<<"\n";
-	file<<"scale time [\u00B5s]"<<","<<scale_time<<"\n\n";
+	file<<"scale time [\u00B5s]"<<","<<scale_time<<"\n";
+	file<<"min speed [m/s]"<<","<<m_line_min_speed->text().toStdString()<<"\n";
+	file<<"max speed [m/s]"<<","<<m_line_max_speed->text().toStdString()<<"\n";
 	file<<"id,radius [\u00B5m],volume [\u00B5m\u00B3],density [g/cm\u00B3],mass [\u00B5g],velocity [m/s],E_kin[\u00B5J],score,file1,file2\n";
 
 	int size 				= m_cv_images.size() - 1;
@@ -408,10 +417,12 @@ void MainWindow::evaluate() {
 	double	velocity		= 0.0;
 	double	E_kin			= 0.0;
 	double	score			= 0.0;
+	double	min_velocity	= m_line_min_speed->text().toDouble();
 	int 	_size_a			= 0;
 	for(int i = 0; i < size; ++i) {
 		score = calcFriends(i, i+1);
-		if(score > 5.0) {
+		cout<<"score: "<<score<<endl;
+		if(score > -1.0) {
 			ParticlesInfo* pinfo 	  = m_particleinfos[i];
 			ParticlesInfo* pinfo_next = m_particleinfos[i+1];
 
@@ -434,9 +445,11 @@ void MainWindow::evaluate() {
 					mass  *= 1e+9;
 					if(pinfo->center[a].x > pinfo_next->center[pinfo->friends[a][0].first].x)
 						E_kin *= -1;
-				
-					file<< cnt <<","<< mean_radius <<","<< volume <<","<< density <<","<< mass << "," << velocity << "," << E_kin << "," << score << "," << m_filenames[i] << "," << m_filenames[i+1] <<"\n";
-					cnt++;
+					
+					if(velocity > min_velocity) {
+						file<< cnt <<","<< mean_radius <<","<< volume <<","<< density <<","<< mass << "," << velocity << "," << E_kin << "," << score << "," << m_filenames[i] << "," << m_filenames[i+1] <<"\n";
+						cnt++;
+					}
 				}
 			}
 		}
@@ -463,7 +476,7 @@ double MainWindow::calcFriends(int a, int b) {
 				cv::resize(I, I2, I1.size());
 				double scale = exp(-pow((double)(pinfo->radius[i] - pinfo_next->radius[j]), 4.0));
 				double score = scale*getPSNR(I1, I2);
-				
+				cout<<"s "<<scale<<endl;
 				friends_list.push_back(make_pair(j, score));
 			}
 			
