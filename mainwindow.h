@@ -42,7 +42,7 @@ private slots:
 	void importImages();
 
 	void changeImage(int value);
-	void changeRadius(int value);
+	void changeRadius(QString value);
 	void changeThreshold(int value);
 	void setParticleActive(int r, int c);
 
@@ -74,10 +74,8 @@ private:
 	QProgressBar* m_progress_load;
 	QSlider*	  m_slider_images;
 	QSlider*	  m_slider_threshold;
-	QSlider*	  m_slider_radius;
 
 	QLabel*		  m_label_threshold;
-	QLabel*		  m_label_radius;
 	
 	QCheckBox*	  m_check_show_radius;
 	QCheckBox*	  m_check_show_links;
@@ -104,6 +102,8 @@ private:
 	QLineEdit*	  m_line_scale_time;
 	QLineEdit*	  m_line_scale_distance;
 	QLineEdit*	  m_line_scale_density;
+	QLineEdit*	  m_line_min_speed;
+	QLineEdit*	  m_line_max_speed;
 
 	QGroupBox*	  m_groupbox_frame;
 	QGroupBox*	  m_groupbox_frame_next;
