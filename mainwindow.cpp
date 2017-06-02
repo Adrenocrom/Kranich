@@ -112,7 +112,7 @@ void MainWindow::createWidgetMain() {
 	m_label_threshold = new QLabel(tr("100"));
 
 	m_slider_radius = new QSlider(Qt::Horizontal);
-	m_slider_radius->setRange(0, 100);
+	m_slider_radius->setRange(0, 500);
 	m_label_radius = new QLabel(tr("50"));
 	connect(m_slider_radius, &QSlider::valueChanged, this, &MainWindow::changeRadius);
 
