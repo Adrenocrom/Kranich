@@ -421,8 +421,7 @@ void MainWindow::evaluate() {
 	int 	_size_a			= 0;
 	for(int i = 0; i < size; ++i) {
 		score = calcFriends(i, i+1);
-		cout<<"score: "<<score<<endl;
-		if(score > -1.0) {
+		if(score > 5.0) {
 			ParticlesInfo* pinfo 	  = m_particleinfos[i];
 			ParticlesInfo* pinfo_next = m_particleinfos[i+1];
 
@@ -476,7 +475,6 @@ double MainWindow::calcFriends(int a, int b) {
 				cv::resize(I, I2, I1.size());
 				double scale = exp(-pow((double)(pinfo->radius[i] - pinfo_next->radius[j]), 4.0));
 				double score = scale*getPSNR(I1, I2);
-				cout<<"s "<<scale<<endl;
 				friends_list.push_back(make_pair(j, score));
 			}
 			
